@@ -1,0 +1,137 @@
+package actions;
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.Map;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import database.MySQLConnection;
+
+@WebServlet("/savePreferencesServlet")
+public class SavePreferences extends HttpServlet {
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	protected synchronized void doPost(HttpServletRequest req, HttpServletResponse res)
+			throws ServletException, IOException {
+		Map<String, String[]> parameterMap = req.getParameterMap();
+
+		HttpSession session = req.getSession();
+		String userName = session.getAttribute("username").toString();
+		String role = null;
+		int student_id = 3;
+		int staff_id = 1;
+		int insertCount = 0;
+
+		try {
+			Connection conn = MySQLConnection.getConnection();
+			
+			//Identify student/staff based on logged-in username
+			String selectQuery = "Select role, student_id, staff_id from login where username = '" + userName + "'";
+			PreparedStatement ptst = conn.prepareStatement(selectQuery);
+			ResultSet rs = ptst.executeQuery();
+			if (rs.next()) {
+				role = rs.getString("role");
+				student_id = rs.getInt("student_id");
+				staff_id = rs.getInt("staff_id");
+			}
+			for (Map.Entry<String, String[]> entry : parameterMap.entrySet()) {
+				String topic = entry.getKey();
+				String preference = entry.getValue()[0];
+
+				if (role.equalsIgnoreCase("S")) {
+					//Student Preferences
+					String selectQuery1 = "Select count(*) as rowCount from preferences where student_id = ?";
+					int selectCount1 = 0;
+					PreparedStatement ptst1 = conn.prepareStatement(selectQuery1);
+					ptst1.setInt(1, student_id);
+					ResultSet rs1 = ptst1.executeQuery();
+					if (rs1.next()) {
+						selectCount1 = rs1.getInt("rowCount");
+					}
+
+					if (selectCount1 == 4) {
+						//Delete if already saved
+						String deleteQuery = "Delete from preferences where student_id = ?";
+						PreparedStatement deletePtst = conn.prepareStatement(deleteQuery);
+						deletePtst.setInt(1, student_id);
+						int deleteCount = deletePtst.executeUpdate();
+						if(deleteCount > 0) {
+							System.out.println(deleteCount + " rows deleted");
+						}						
+					}
+						//Insert preferences
+						String insertQuery = "INSERT INTO preferences (student_id, staff_id, preference_rank, topic_id) SELECT ?, ?, ?, topics.topic_id "
+								+ "FROM topics " + "WHERE topics.topic_name = ?";
+						PreparedStatement statement = conn.prepareStatement(insertQuery);
+
+						statement.setInt(1, student_id);
+						statement.setInt(2, staff_id);
+						statement.setInt(3, Integer.parseInt(preference));
+						statement.setString(4, topic);
+						insertCount += statement.executeUpdate();
+					
+				} else if (role.equalsIgnoreCase("P")) {
+					//Supervisor Preferences
+					String selectQuery1 = "Select count(*) as rowCount from preferences where staff_id = ?";
+					int selectCount1 = 0;
+					PreparedStatement ptst1 = conn.prepareStatement(selectQuery1);
+					ptst1.setInt(1, staff_id);
+					ResultSet rs1 = ptst1.executeQuery();
+					if (rs1.next()) {
+						selectCount1 = rs1.getInt("rowCount");
+					}
+
+					if (selectCount1 == 4) {
+						//Delete if already saved
+						String deleteQuery = "Delete from preferences where staff_id = ?";
+						PreparedStatement deletePtst = conn.prepareStatement(deleteQuery);
+						deletePtst.setInt(1, staff_id);
+						int deleteCount = deletePtst.executeUpdate();
+						if(deleteCount > 0) {
+							System.out.println(deleteCount + " rows deleted");
+						}
+					} 	
+					//Insert preferences
+					String insertQuery = "INSERT INTO preferences (student_id, staff_id, preference_rank, topic_id) SELECT ?, ?, ?, topics.topic_id "
+							+ "FROM topics " + "WHERE topics.topic_name = ?";
+					PreparedStatement statement = conn.prepareStatement(insertQuery);
+
+					statement.setInt(1, student_id);
+					statement.setInt(2, staff_id);
+					statement.setInt(3, Integer.parseInt(preference));
+					statement.setString(4, topic);
+					insertCount += statement.executeUpdate();
+				}
+				if (insertCount == 4) {
+					//Send email notification to student/supervisor after saving preferences
+					System.out.println("Preferences saved successfully!!!");
+					EmailNotification email = new EmailNotification();
+					String toEmail = (student_id == 3) ? userName + "@leicester.ac.uk" : userName + "@student.le.ac.uk";
+					String redirect = (student_id == 3) ? "supervisorHome.jsp?saved" : "studentHome.jsp?saved";
+					String message = "Hello,\n\n"
+							+ "This is a Msc. Final Project testing. "
+							+ "Your topic preferences for the Personal and Group skills module has been selected."
+							+ "You can modify your preferences until the deadline.\n\n" + "Best regards,\n"
+							+ "Project Testing";
+					email.sendEmail(toEmail, "Topic Preferences Saved", message);
+					res.sendRedirect(redirect);
+				}
+			}
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+	}
+}

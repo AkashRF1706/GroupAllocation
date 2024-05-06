@@ -1,0 +1,100 @@
+<%@page import="java.util.ArrayList"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.util.List" %>
+<%@ page import="model.Student" %>
+<%@ page import="database.StudentsDAO" %>
+
+<%
+    // Check if department filter is applied
+    String departmentFilter = request.getParameter("department");
+    List<Student> students = new ArrayList<>();
+
+    // Retrieve students based on department filter
+    if (departmentFilter != null && !departmentFilter.isEmpty()) {
+    	StudentsDAO sd = new StudentsDAO();
+        students = sd.getAllStudents(departmentFilter);
+    }
+%>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Student Preferences</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f5f5f5;
+            padding-top: 20px;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .btn-custom {
+            border-radius: 20px;
+            background-color: #4CAF50; /* Green */
+            color: white;
+        }
+        .table-container {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Student Preferences</h1>
+    <!-- Department filter form -->
+    <form action="studentPreferences.jsp" method="get" class="mb-4">
+        <div class="form-group">
+            <label for="department">Filter by Department:</label>
+            <select name="department" id="department" class="form-control">
+                <option value="">All Departments</option>
+                <!-- Populate departments from database or static list -->
+                <option value="Computer Science" <%= "Computer Science".equals(departmentFilter) ? "selected" : "" %>>Computer Science</option>
+                <option value="Mechanical Engineering" <%= "Mechanical Engineering".equals(departmentFilter) ? "selected" : "" %>>Mechanical Engineering</option>
+                <!-- Add more departments as needed -->
+            </select>
+        </div>
+        <button type="submit" class="btn btn-custom">Apply Filter</button>
+    </form>
+
+    <!-- Student table, displayed only if department filter is applied -->
+    <% if (departmentFilter != null && !departmentFilter.isEmpty() && !students.isEmpty()) { %>
+        <div class="table-container" style="display: block;">
+            <table class="table table-bordered">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Student ID</th>
+                        <th>Name</th>
+                        <th>Department</th>
+                        <th>Preference 1</th>
+                        <th>Preference 2</th>
+                        <th>Preference 3</th>
+                        <th>Preference 4</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% for (Student student : students) { %>
+                    <tr>
+                        <td><%= student.getId() %></td>
+                        <td><%= student.getName() %></td>
+                        <td><%= student.getDepartment() %></td>
+                        <td><%= student.getPreferences().get(0) %></td>
+                        <td><%= student.getPreferences().get(1) %></td>
+                        <td><%= student.getPreferences().get(2) %></td>
+                        <td><%= student.getPreferences().get(3) %></td>
+                    </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    <% } else if(departmentFilter == null || departmentFilter.isEmpty()){ %>
+    <p id="message" style="color: red; display: block">Please select a department</p>
+    <%} else if(departmentFilter != null && !departmentFilter.isEmpty() && students.isEmpty()){ %>
+    <p id="message" style="color: red; display: block">No records to display</p>
+    <%} %>
+</div>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<%@page import="java.util.ArrayList"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.util.List" %>
+<%@ page import="model.Student" %>
+<%@ page import="database.StudentsDAO" %>
+
+<%
+    // Check if department filter is applied
+    String departmentFilter = request.getParameter("department");
+    List<Student> students = new ArrayList<>();
+
+    // Retrieve students based on department filter
+    if (departmentFilter != null && !departmentFilter.isEmpty()) {
+    	StudentsDAO sd = new StudentsDAO();
+        students = sd.getAllStudents(departmentFilter);
+    }
+%>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Student Preferences</title>
+</head>
+<body>
+    <h1>Student Preferences</h1>
+    
+    <!-- Department filter -->
+    <form action="studentPreferences.jsp" method="get">
+        <label for="department">Filter by Department:</label>
+        <select name="department" id="department">
+            <option value="">All Departments</option>
+            <!-- Populate departments from database or static list -->
+            <!-- Example: -->
+            <option value="Computer Science" <%= "Computer Science".equals(departmentFilter) ? "selected" : "" %>>Computer Science</option>
+            <option value="Electrical Engineering" <%= "Electrical Engineering".equals(departmentFilter) ? "selected" : "" %>>Electrical Engineering</option>
+            <!-- Add more departments as needed -->
+        </select>
+        <button type="submit">Apply Filter</button><br>
+    </form>
+    <br>
+    <!-- Student table -->
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Student ID</th>
+                <th>Name</th>
+                <th>Department</th>
+                <th>Preference 1</th>
+                <th>Preference 2</th>
+                <th>Preference 3</th>
+                <th>Preference 4</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% for (Student student : students) { %>
+            <tr>
+                <td><%= student.getId() %></td>
+                <td><%= student.getName() %></td>
+                <td><%= student.getDepartment() %></td>
+                <td><%= student.getPreferences().get(0) %></td>
+                <td><%= student.getPreferences().get(1) %></td>
+                <td><%= student.getPreferences().get(2) %></td>
+                <td><%= student.getPreferences().get(3) %></td>
+            </tr>
+            <% } %>
+        </tbody>
+    </table>
+</body>
+</html>

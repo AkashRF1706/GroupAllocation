@@ -1,0 +1,122 @@
+package actions;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class Redistribution {
+	
+	public Map<String, Object[]> redistributeStudents(Map<String, Object[]> topicGroupCount, Map<Integer, List<String>> students, int minGroupSize, int maxGroupSize) {
+	    // Track which students have been reallocated to print or log them later if needed
+	    Map<Integer, String> reallocatedStudents = new HashMap<>();
+	    List<Integer> studentsNeedingReallocation = new ArrayList<>();
+
+	    topicGroupCount.forEach((topic, details) -> {
+	        @SuppressWarnings("unchecked")
+	        List<List<Integer>> groups = (List<List<Integer>>) details[0];
+	        List<List<Integer>> groupsToRemove = new ArrayList<>();
+	        for (List<Integer> group : groups) {
+	            if (group.size() < minGroupSize) {
+	                // Attempt to redistribute each student in underfilled groups
+	                for (Integer studentId : new ArrayList<>(group)) { // Copy to avoid concurrent modification
+	                    for (String preference : students.get(studentId)) {
+	                        if (tryReallocateStudentToGroup(preference, studentId, topicGroupCount, minGroupSize, maxGroupSize)) {
+	                            group.remove(studentId); // Remove from current group if reallocated
+	                            reallocatedStudents.put(studentId, preference); // Track successful reallocation
+	                            break; // Break after successful reallocation
+	                        }
+	                    }
+	                }
+	                // If group is empty after redistribution, mark it for removal
+	                if (group.isEmpty()) {
+	                    groupsToRemove.add(group);
+	                }
+	            }
+	        }
+	        // Remove empty groups from the topic
+	        groups.removeAll(groupsToRemove);
+	    });
+
+	    // Optionally, log or print reallocated students and their new groups
+	    reallocatedStudents.forEach((studentId, newGroup) ->
+	            System.out.println("Student " + studentId + " was reallocated to " + newGroup));
+	    
+	    topicGroupCount.values().forEach(details -> {
+	        @SuppressWarnings("unchecked")
+	        List<List<Integer>> groups = (List<List<Integer>>) details[0];
+	        groups.forEach(group -> {
+	            if (group.size() < minGroupSize) {
+	                studentsNeedingReallocation.addAll(group);
+	            }
+	        });
+	    });
+	    
+	    studentsNeedingReallocation.forEach(studentId -> {
+	        boolean reallocated = tryToReallocateStudent(studentId, students.get(studentId), topicGroupCount, minGroupSize, maxGroupSize);
+	        if (!reallocated) {
+	            // If direct reallocation fails, attempt more complex re-grouping strategies
+	            attemptComplexRedistribution(studentId, topicGroupCount, students, minGroupSize, maxGroupSize);
+	        } else {
+				
+			}
+	    });
+	    
+	    return topicGroupCount;
+	}
+
+    public boolean tryReallocateStudentToGroup(String topic, Integer studentId, Map<String, Object[]> topicGroupCount, int minGroupSize, int maxGroupSize) { 
+
+        Object[] details = topicGroupCount.get(topic);
+
+        @SuppressWarnings("unchecked")
+        List<List<Integer>> groups = (List<List<Integer>>) details[0];
+        // Try to add to existing group
+        for (List<Integer> group : groups) {
+            	if(group.size() < maxGroupSize) {
+                group.add(studentId);
+                return true;
+            }
+        }
+        // Check if a new group can be created under the topic use limit
+        if (groups.size() < 3) {
+            List<Integer> newGroup = new ArrayList<>();
+            newGroup.add(studentId);
+            groups.add(newGroup);
+            return true;
+        }
+    // If the student couldn't be reallocated to any group within their preferences
+    System.out.println("Cannot allocate StudentID " + studentId);
+    return false; // No suitable group found or created
+}
+    
+    private boolean tryToReallocateStudent(Integer studentId, List<String> preferences, Map<String, Object[]> topicGroupCount, int minGroupSize, int maxGroupSize) {
+        for (String preference : preferences) {
+            Object[] details = topicGroupCount.get(preference);
+            if (details == null) continue;
+
+            @SuppressWarnings("unchecked")
+            List<List<Integer>> groups = (List<List<Integer>>) details[0];
+            for (List<Integer> group : groups) {
+                if (group.size() >= minGroupSize && group.size() < maxGroupSize) {
+                    group.add(studentId);
+                    return true; // Student successfully reallocated
+                }
+            }
+        }
+        return false; // No suitable group found
+    }
+    
+    private void attemptComplexRedistribution(Integer studentId, Map<String, Object[]> topicGroupCount, Map<Integer, List<String>> students, int minGroupSize, int maxGroupSize) {
+        // Logic for complex redistribution strategies:
+        // 1. Identify groups that are over the minimum size.
+        // 2. Check if students from these groups share preferences with the student needing reallocation.
+        // 3. Attempt to form new groups or reallocate students to match preferences and size constraints.
+        
+        // Note: This function needs to be carefully designed to ensure it doesn't cause infinite loops
+        // or inefficient shuffling of students between groups. Consider the overall goal of optimizing
+        // group allocations while respecting student preferences and group size constraints.
+        
+        System.out.println("Complex redistribution needed for StudentID " + studentId + ". Further logic to be implemented.");
+    }
+    }

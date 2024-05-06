@@ -1,0 +1,58 @@
+package database;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import model.Student;
+
+public class StudentsDAO {
+
+	public List<Student> getAllStudents(String department){
+		List<Student> studentsList = new ArrayList<>();
+		try {
+			Connection conn = MySQLConnection.getConnection();
+			String query = "SELECT s.student_name, s.student_id, s.department, p.preference_rank, p.topic_id, t.topic_name "
+					+ " FROM students s "
+					+ " JOIN preferences p ON s.student_id = p.student_id "
+					+ " JOIN topics t ON p.topic_id = t.topic_id "
+					+ " WHERE s.department = ? "
+					+ " AND s.student_id != 3 "
+					+ " ORDER BY s.student_id, p.preference_rank";
+			
+			PreparedStatement ptst = conn.prepareStatement(query);
+			ptst.setString(1, department);
+			ResultSet rs = ptst.executeQuery();
+			
+			Map<Integer, Student> studentMap = new HashMap<>();
+			
+			while(rs.next()) {
+				int studentId = rs.getInt("student_id");
+				String studentName = rs.getString("student_name");
+				String studentDepartment = rs.getString("department");
+				int preferenceRank = rs.getInt("preference_rank");
+				String topicName = rs.getString("topic_name");
+				
+				//Create Student object if not created
+				if(!studentMap.containsKey(studentId)) {
+					Student student = new Student(studentId, studentName, studentDepartment);
+					student.setPreferences(new ArrayList<>());
+					studentMap.put(studentId, student);
+				}
+				
+				//Add Preference rank to the students list
+				studentMap.get(studentId).getPreferences().add(topicName);
+			}
+			
+			studentsList.addAll(studentMap.values());
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+		return studentsList;
+	}
+}

@@ -1,0 +1,63 @@
+package actions;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class Redistribution {
+	
+	public Map<String, Object[]> redistributeStudents(Map<String, Object[]> topicGroupCount, Map<Integer, List<String>> students, int minGroupSize, int maxGroupSize) {
+	    // Track which students have been reallocated to print or log them later if needed
+	    Map<Integer, String> reallocatedStudents = new HashMap<>();
+
+	    topicGroupCount.forEach((topic, details) -> {
+	        @SuppressWarnings("unchecked")
+	        List<List<Integer>> groups = (List<List<Integer>>) details[0];
+	        List<List<Integer>> groupsToRemove = new ArrayList<>();
+	        for (List<Integer> group : groups) {
+	            if (group.size() < minGroupSize) {
+	                // Attempt to redistribute each student in underfilled groups
+	                for (Integer studentId : new ArrayList<>(group)) { // Copy to avoid concurrent modification
+	                    for (String preference : students.get(studentId)) {
+	                        if (tryReallocateStudentToGroup(preference, studentId, topicGroupCount, maxGroupSize)) {
+	                            group.remove(studentId); // Remove from current group if reallocated
+	                            reallocatedStudents.put(studentId, preference); // Track successful reallocation
+	                            break; // Break after successful reallocation
+	                        }
+	                    }
+	                }
+	                // If group is empty after redistribution, mark it for removal
+	                if (group.isEmpty()) {
+	                    groupsToRemove.add(group);
+	                }
+	            }
+	        }
+	        // Remove empty groups from the topic
+	        groups.removeAll(groupsToRemove);
+	    });
+
+	    // Optionally, log or print reallocated students and their new groups
+	    reallocatedStudents.forEach((studentId, newGroup) ->
+	            System.out.println("Student " + studentId + " was reallocated to " + newGroup));
+	
+	    return topicGroupCount;
+	}
+
+
+    public boolean tryReallocateStudentToGroup(String topic, Integer studentId, Map<String, Object[]> topicGroupCount, int maxGroupSize) {
+        Object[] details = topicGroupCount.get(topic);
+        if (details == null) return false;
+
+        @SuppressWarnings("unchecked")
+        List<List<Integer>> studentGroups = (List<List<Integer>>) details[0];
+        for (List<Integer> group : studentGroups) {
+            if (group.size() < maxGroupSize) {
+                group.add(studentId);
+                return true; // Student added to an existing group
+            }
+        }
+        return false;
+    }
+
+}

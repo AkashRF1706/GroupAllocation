@@ -1,0 +1,46 @@
+package actions;
+
+import java.util.Properties;
+
+import javax.mail.Message;
+import javax.mail.PasswordAuthentication;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
+
+public class EmailNotification{
+
+	public synchronized void sendEmail(String toEmail, String subject, String message) {
+		
+		String host = "smtp.gmail.com";
+		String port = "587";
+		String fromEmail = "akashrf1706@gmail.com";
+		String password = "7010327120";
+		
+		Properties properties = new Properties();
+		properties.put("mail.smtp.auth", true);
+		properties.put("mail.smtp.starttls.enable", "true");
+		properties.put("mail.smtp.host", host);
+		properties.put("mail.smtp.port", port);
+		
+		//Creating session
+		 Session session = Session.getInstance(properties, new javax.mail.Authenticator() {
+	            protected PasswordAuthentication getPasswordAuthentication() {
+	                return new PasswordAuthentication(fromEmail, password);
+	            }
+	        });
+		 try {
+			 	Message emailMessage = new MimeMessage(session);
+	            emailMessage.setFrom(new InternetAddress(fromEmail));
+	            emailMessage.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
+	            emailMessage.setSubject(subject);
+	            emailMessage.setText(message);
+	            Transport.send(emailMessage);
+		 } catch (Exception e) {
+			// TODO: handle exception
+			 e.printStackTrace();
+		}
+	}
+
+}

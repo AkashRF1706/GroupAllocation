@@ -1,0 +1,71 @@
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<%@ page import="java.sql.Connection, java.sql.PreparedStatement, java.sql.ResultSet, java.sql.SQLException, java.util.List, 
+java.util.ArrayList, database.MySQLConnection" %>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Student Home</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #dddddd;
+            text-align: center;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h2>Topics and Preferences</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Topic</th>
+                <th>Preference 1</th>
+                <th>Preference 2</th>
+                <th>Preference 3</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Assuming you have fetched topics and preferences from the database -->
+            <%
+                // Perform database operations to fetch topics
+                List<String> topics = new ArrayList<>();
+                // Assuming you have a method to get a database connection
+                try (Connection conn = MySQLConnection.getConnection()) {
+                    String query = "SELECT topic_name FROM finalproject.topics where is_available = 'Y'";
+                    PreparedStatement statement = conn.prepareStatement(query);
+                    ResultSet resultSet = statement.executeQuery();
+
+                    while (resultSet.next()) {
+                        topics.add(resultSet.getString("topic_name"));
+                    }
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+
+                // Loop through topics and display them with preference radio buttons
+                for (String topic : topics) {
+            %>
+            <tr>
+                <td><%= topic %></td>
+                <td><input type="radio" name="<%= topic %>" value="preference1"></td>
+                <td><input type="radio" name="<%= topic %>" value="preference2"></td>
+                <td><input type="radio" name="<%= topic %>" value="preference3"></td>
+            </tr>
+            <% } %>
+        </tbody>
+    </table>
+</body>
+</html>

@@ -1,0 +1,404 @@
+package actions;
+
+import java.io.FileWriter;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.jgrapht.Graph;
+import org.jgrapht.alg.flow.EdmondsKarpMFImpl;
+import org.jgrapht.graph.DefaultDirectedWeightedGraph;
+import org.jgrapht.graph.DefaultWeightedEdge;
+
+import database.MySQLConnection;
+
+public class StudentAllocation {
+
+	// Redistribute students among groups based on their preferences
+	private static Map<String, List<List<Integer>>> redistribute(Map<String, Object[]> topicGroupCount,
+			Map<Integer, List<String>> studentsPreferences, int minGroupSize, int maxGroupSize) {
+
+		Map<String, List<List<Integer>>> redistributedGroups = new HashMap<>();
+		Set<Integer> studentsToRedistribute = new HashSet<>();
+
+		topicGroupCount.forEach((topic, objects) -> {
+            @SuppressWarnings("unchecked")
+            List<List<Integer>> groups = (List<List<Integer>>) objects[0]; 
+            int supervisorId = (Integer) objects[1];
+
+            // Now, groups is a List<List<Integer>> of student IDs
+            List<List<Integer>> validGroups = groups.stream()
+                .filter(group -> group.size() >= minGroupSize)
+                .collect(Collectors.toList());
+			if (!validGroups.isEmpty()) {
+				redistributedGroups.put(topic, validGroups);
+			} else {
+				groups.forEach(group -> studentsToRedistribute.addAll(group));
+			}
+		});
+		;
+
+		studentsToRedistribute.forEach(studentId -> {
+			for (String preference : studentsPreferences.get(studentId)) {
+				// Try to add the student to the next preferred, valid group
+				if (redistributeStudent(studentId, preference, redistributedGroups, maxGroupSize)) {
+					break; // Stop once successfully added
+				}
+			}
+		});
+
+		return redistributedGroups;
+	}
+
+	private static boolean redistributeStudent(int studentId, String topic, Map<String, List<List<Integer>>> groups, int maxGroupSize) {
+		List<List<Integer>> topicGroups = groups.getOrDefault(topic, new ArrayList<>());
+
+		boolean added = false;
+		for (List<Integer> group : topicGroups) {
+			if (group.size() < maxGroupSize) { // Assuming maxGroupSize is defined elsewhere
+				group.add(studentId);
+				added = true;
+				break;
+			}
+		}
+		if (!added) { 
+			List<Integer> newGroup = new ArrayList<>();
+			newGroup.add(studentId);
+			topicGroups.add(newGroup);
+			added = true;
+		}
+		groups.putIfAbsent(topic, topicGroups);
+		return added;
+	}
+	
+	private static Map<String, Integer> assignSupervisorsToTopics(
+		    Map<String, List<List<Integer>>> validGroups,
+		    Map<Integer, List<String>> supervisorPreferences) {
+		    
+		    Map<String, Integer> topicSupervisorAssignment = new HashMap<>();
+		    supervisorPreferences.forEach((supervisorId, preferences) -> {
+		        preferences.forEach(topic -> {
+		            if (validGroups.containsKey(topic)) {
+		                // Assign supervisor to the topic if not already assigned
+		                topicSupervisorAssignment.putIfAbsent(topic, supervisorId);
+		            }
+		        });
+		    });
+		    return topicSupervisorAssignment;
+		}
+
+
+	// Count the number of students assigned to their respective preferences
+	private static Map<String, Integer> assignmentCount(List<String> topics,
+			Map<String, List<List<Integer>>> topicGroupCount, Map<Integer, List<String>> students) {
+		Map<String, Integer> scores = new HashMap<>();
+		scores.put("first", 0);
+		scores.put("second", 0);
+		scores.put("third", 0);
+		scores.put("fourth", 0);
+		scores.put("random", 0);
+		int total = 0;
+
+		for (String t : topics) {
+			if (!topicGroupCount.containsKey(t)) {
+				continue;
+			}
+			for (List<Integer> group : topicGroupCount.get(t)) {
+				for (int s : group) {
+					List<String> prefs = students.get(s);
+					if (t.equalsIgnoreCase(prefs.get(0))) {
+						scores.put("first", scores.get("first") + 1);
+					} else if (prefs.size() > 1 && t.equalsIgnoreCase(prefs.get(1))) {
+						scores.put("second", scores.get("second") + 1);
+					} else if (prefs.size() > 2 && t.equalsIgnoreCase(prefs.get(2))) {
+						scores.put("third", scores.get("third") + 1);
+					} else if (prefs.size() > 3 && t.equalsIgnoreCase(prefs.get(3))) {
+						scores.put("fourth", scores.get("fourth") + 1);
+					} else {
+						scores.put("random", scores.get("random") + 1);
+					}
+					total++;
+				}
+			}
+		}
+
+		return scores;
+	}
+
+	// Save the student assignment results to a CSV file
+	private static int resultFile(List<String> topics, Map<String, List<List<Integer>>> topicGroupCount) {
+		List<Map<String, Object>> resultData = new ArrayList<>();
+		int totalAssigned = 0;
+		for (String t : topics) {
+			if (!topicGroupCount.containsKey(t)) {
+				continue;
+			}
+			for (int i = 0; i < topicGroupCount.get(t).size(); i++) {
+				List<Integer> group = topicGroupCount.get(t).get(i);
+				totalAssigned += group.size();
+				for (int student : group) {
+					Map<String, Object> row = new HashMap<>();
+					row.put("topic", t);
+					row.put("group", i + 1);
+					row.put("student", student);
+					resultData.add(row);
+				}
+			}
+		}
+		// Write data to CSV file
+		try (FileWriter writer = new FileWriter("allocation.csv")) {
+			writer.append("topic,group,student\n");
+			for (Map<String, Object> row : resultData) {
+				writer.append(row.get("topic") + "," + row.get("group") + "," + row.get("student") + "\n");
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return totalAssigned;
+	}
+
+	// Log the results and parameters into a text file
+	private static void logFile(int totalAssigned, List<String> topics, int assignedTopics, int minGroupSize,
+			int maxGroupSize, int topicUseLimit, Map<String, Integer> assignedCounts, int total) {
+		try (FileWriter writer = new FileWriter("log_file.txt")) {
+			writer.write("All " + totalAssigned + " students were assigned successfully.\n");
+			writer.write("Assigned " + assignedTopics + " out of " + topics.size() + " topics.\n\n");
+			writer.write("Parameters:\n");
+			writer.write("Min group size: " + minGroupSize + "\n");
+			writer.write("Max group size: " + maxGroupSize + "\n");
+			writer.write("Topic use limit: " + topicUseLimit + "\n\n");
+			writer.write("Assignment Summary:\n");
+			writer.write("Total assigned with preferences: " + total + "\n");
+			writer.write("Total assigned at random: " + assignedCounts.get("random") + "\n\n");
+			writer.write("Score Function:\n");
+			writer.write("  1st preference: " + assignedCounts.get("first") + "\n");
+			writer.write("  2nd preference: " + assignedCounts.get("second") + "\n");
+			writer.write("  3rd preference: " + assignedCounts.get("third") + "\n");
+			writer.write("  4th preference: " + assignedCounts.get("fourth") + "\n");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static int sumGroupSizes(List<List<Integer>> groups) {
+		int sum = 0;
+		for (List<Integer> group : groups) {
+			sum += group.size();
+		}
+		return sum;
+	}
+
+	public static void main(String[] args) {
+		int minGroupSize = 3;
+		int maxGroupSize = 5;
+		int topicUseLimit = 3;
+
+		Map<Integer, List<String>> students = new HashMap<>();
+		Map<Integer, List<String>> supervisors = new HashMap<>();
+		Map<Integer, Integer> supervisorCapacities = new HashMap<>();
+		List<String> topics = new ArrayList<>();
+
+		try {
+			Connection conn = MySQLConnection.getConnection();
+			String query = "SELECT student_id, "
+					+ " MAX(CASE WHEN preference_rank = 1 THEN concat('t', topic_id) END) AS pref1, "
+					+ " MAX(CASE WHEN preference_rank = 2 THEN concat('t', topic_id) END) AS pref2, "
+					+ " MAX(CASE WHEN preference_rank = 3 THEN concat('t', topic_id) END) AS pref3, "
+					+ " MAX(CASE WHEN preference_rank = 4 THEN concat('t', topic_id) END) AS pref4 "
+					+ " FROM preferences " + " GROUP BY student_id";
+
+			PreparedStatement ptst = conn.prepareStatement(query);
+			ResultSet rs = ptst.executeQuery();
+			while (rs.next()) {
+				int studentId = rs.getInt("student_id");
+				List<String> prefs = new ArrayList<>();
+				prefs.add(rs.getString("pref1"));
+				prefs.add(rs.getString("pref2"));
+				prefs.add(rs.getString("pref3"));
+				prefs.add(rs.getString("pref4"));
+				students.put(studentId, prefs);
+			}
+
+			String query1 = "Select concat('t', topic_id) as topicID, topic_name from topics";
+			PreparedStatement ptst1 = conn.prepareStatement(query1);
+			ResultSet rs1 = ptst1.executeQuery();
+			while (rs1.next()) {
+				topics.add(rs1.getString("topicID"));
+			}
+
+			String query2 = "Select staff_id, numgroups, topics from supervisor_prefs";
+			PreparedStatement ptst2 = conn.prepareStatement(query2);
+			ResultSet rs2 = ptst2.executeQuery();
+			while (rs2.next()) {
+				int supervisorId = rs2.getInt("staff_id");
+				int numGroups = rs2.getInt("numgroups");
+				String dbTopics = rs2.getString("topics");
+				List<String> supervisorTopics = Arrays.stream(dbTopics.split(",")).map(s -> "t" + s)
+						.collect(Collectors.toList());
+				supervisors.put(supervisorId, supervisorTopics);
+				supervisorCapacities.put(supervisorId, numGroups);
+			}
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+
+		// Initialize directed graph (network)
+		Graph<String, DefaultWeightedEdge> G = new DefaultDirectedWeightedGraph<>(DefaultWeightedEdge.class);
+		G.addVertex("source");
+		G.addVertex("sink");
+
+		// Add nodes for students, supervisors and topics
+		for (int s : students.keySet()) {
+			G.addVertex(String.valueOf(s));
+		}
+		for (String t : topics) {
+			G.addVertex(t);
+		}
+		for (int s : supervisors.keySet()) {
+			G.addVertex("supervisor" + s);
+		}
+
+		// Add edges between source and students (capacity 1)
+		for (int s : students.keySet()) {
+			DefaultWeightedEdge edge = G.addEdge("source", String.valueOf(s));
+			G.setEdgeWeight(edge, 1.0);
+		}
+
+		// Add edges between students and topics (capacity 1, weight based on preference)
+		for (int s : students.keySet()) {
+			List<String> prefs = students.get(s);
+			for (int i = 0; i < prefs.size(); i++) {
+				String t = prefs.get(i);
+				if (t != null) {
+					DefaultWeightedEdge edge = G.addEdge(String.valueOf(s), String.valueOf(t));
+					int cost = 5 - (i + 1);
+					G.setEdgeWeight(edge, cost);
+				}
+			}
+		}
+
+		// Add edges between topics and supervisors
+		for (Map.Entry<Integer, List<String>> entry : supervisors.entrySet()) {
+			int supervisorId = entry.getKey();
+			List<String> supervisorTopics = entry.getValue();
+			for (String topic : supervisorTopics) {
+				if (topics.contains(topic)) {
+					DefaultWeightedEdge edge = G.addEdge(topic, "supervisor" + supervisorId);
+					G.setEdgeWeight(edge, supervisorCapacities.get(supervisorId));
+				}
+			}
+		}
+
+		// Add edges between topics and sink (capacity based on maxGroupSize)
+		/*for (String t : topics) {
+			DefaultWeightedEdge edge = G.addEdge(String.valueOf(t), "sink");
+			G.setEdgeWeight(edge, maxGroupSize * topicUseLimit);
+		}*/
+
+		// Add edges between supervisor and sink
+		for (Map.Entry<Integer, Integer> entry : supervisorCapacities.entrySet()) {
+			int supervisorId = entry.getKey();
+			int capacity = entry.getValue();
+			DefaultWeightedEdge edge = G.addEdge("supervisor" + supervisorId, "sink");
+			G.setEdgeWeight(edge, capacity); // Capacity to oversee multiple groups
+		}
+
+		// Compute minimum cost flow
+		EdmondsKarpMFImpl<String, DefaultWeightedEdge> maxFlow = new EdmondsKarpMFImpl<>(G);
+		double flow = maxFlow.calculateMaximumFlow("source", "sink");
+		System.out.println(flow);
+
+		// Get the flow map
+		Map<DefaultWeightedEdge, Double> flowMap = maxFlow.getFlowMap();
+		System.out.println(flowMap);
+
+		/*
+		 * Map<String, List<List<Integer>>> topicGroupCount = new HashMap<>();
+		 * for(String t : topics) { List<List<Integer>> assignedStudentsLists = new
+		 * ArrayList<>(); List<Integer> assignedStudents = new ArrayList<>(); for(int s
+		 * : students.keySet()) { DefaultWeightedEdge edge =
+		 * G.getEdge(String.valueOf(s), String.valueOf(t)); if(edge != null &&
+		 * flowMap.containsKey(edge) && flowMap.get(edge) > 0) {
+		 * assignedStudents.add(s); if (assignedStudents.size() == maxGroupSize) {
+		 * assignedStudentsLists.add(assignedStudents); topicGroupCount.put(t,
+		 * assignedStudentsLists); assignedStudents.clear(); } } }
+		 * if(!assignedStudents.isEmpty()) {
+		 * assignedStudentsLists.add(assignedStudents); topicGroupCount.put(t,
+		 * assignedStudentsLists); } }
+		 */
+
+		Map<String, Object[]> topicGroupCount = new HashMap<>();
+
+		for (String t : topics) {
+			List<List<Integer>> assignedStudentsLists = new ArrayList<>();
+			List<Integer> assignedStudents = new ArrayList<>();
+			int assignedSupervisor = 0; // To keep track of the assigned supervisor
+
+			// Find the assigned supervisor for the topic
+			for (Map.Entry<Integer, List<String>> entry : supervisors.entrySet()) {
+				int supervisorId = entry.getKey();
+				if (entry.getValue().contains(t)) { // If the supervisor is interested in this topic
+					DefaultWeightedEdge edge = G.getEdge(t, "supervisor" + supervisorId);
+					if (edge != null && flowMap.containsKey(edge) && flowMap.get(edge) > 0) {
+						// This supervisor is assigned, assuming 1 supervisor per topic for simplicity
+						assignedSupervisor = supervisorId;
+						break;
+					}
+				}
+			}
+
+			// Allocate students to the topic
+			for (int s : students.keySet()) {
+				DefaultWeightedEdge edge = G.getEdge(String.valueOf(s), t);
+				if (edge != null && flowMap.containsKey(edge) && flowMap.get(edge) > 0) {
+					assignedStudents.add(s);
+					if (assignedStudents.size() == maxGroupSize) {
+						assignedStudentsLists.add(new ArrayList<>(assignedStudents));
+						assignedStudents.clear();
+					}
+				}
+			}
+
+			if (!assignedStudents.isEmpty()) {
+				assignedStudentsLists.add(new ArrayList<>(assignedStudents));
+			}
+
+			// Store both the assigned students lists and the assigned supervisor
+			topicGroupCount.put(t, new Object[] { assignedStudentsLists, assignedSupervisor });
+		}
+
+		// Example of how to access and print the information
+		for (Map.Entry<String, Object[]> entry : topicGroupCount.entrySet()) {
+			String topic = entry.getKey();
+			Object[] details = entry.getValue();
+			List<List<Integer>> studentGroups = (List<List<Integer>>) details[0];
+			int supervisorId = (Integer) details[1];
+
+			System.out.println("Topic: " + topic + ", Supervisor ID: " + supervisorId + ", Student Groups: "
+					+ studentGroups.toString());
+		}
+
+		// Redistribution of students
+		 System.out.println(redistribute(topicGroupCount, students, minGroupSize, maxGroupSize));
+
+		// Count the number of students assigned to their respective preferences
+		// Map<String, Integer> assignedCounts = assignmentCount(topics,
+		// topicGroupCount, students);
+
+		// Save the student assignment results to a CSV file
+		// int totalAssigned = resultFile(topics, topicGroupCount);
+
+		// Log the results and parameters into a text file
+		// logFile(totalAssigned, topics, topicGroupCount.size(), minGroupSize,
+		// maxGroupSize, topicUseLimit, assignedCounts, totalAssigned);
+	}
+}

@@ -1,0 +1,153 @@
+package database;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.util.Scanner;
+
+import org.mindrot.jbcrypt.BCrypt;
+
+
+public class InsertLoginCredentials {
+	
+	public static void main(String[] args) throws SQLException {
+		
+		Connection connection = MySQLConnection.getConnection();
+		
+		System.out.println("Enter which table to update:");
+		System.out.println("1. Students");
+		System.out.println("2. Staffs");
+		System.out.println("3. Login");
+		
+		Scanner scanner = new Scanner(System.in);
+		int option = scanner.nextInt();
+		
+		switch (option) {
+		case 1: {
+			insertStudent(connection);
+			break;
+		}
+		case 2: {
+			insertStaff(connection);
+			break;
+		}
+		case 3: {
+			insertLogin(connection);
+			break;
+		}
+		default:
+			System.out.println("Enter the correct option");
+			break;
+		}		
+	}
+	
+	public static void insertStudent (Connection conn) {
+		String[][] studentData = {
+				{"Akash Varshan", "229037208", "avm8@student.le.ac.uk", "avm8"},
+				{"Roshini Rajesh", "229036144", "rar37@student.le.ac.uk", "rar37"}
+		};
+		
+		try {
+			String insertQuery = "INSERT INTO Students (student_name, student_number, email, username) VALUES (?, ?, ?, ?)";
+            PreparedStatement ptst = conn.prepareStatement(insertQuery);
+            int insertCount = 0;
+            
+            for(String[] student : studentData) {
+            	String studentName = student[0]; 
+            	String studentNumber = student[1];
+            	String email = student[2];
+            	String username = student[3];
+            	
+            	ptst.setString(1, studentName);
+            	ptst.setInt(2, Integer.parseInt(studentNumber));
+            	ptst.setString(3, email);
+            	ptst.setString(4, username);
+            	
+            	insertCount = ptst.executeUpdate();
+            }
+            
+            if(insertCount > 0) {
+            	System.out.println("Inserted Successfulyy....");
+            }
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+	}
+	
+	public static void insertStaff (Connection conn) {
+		String[][] staffData = {
+				{"Nicole Yap", "ny50@leicester.ac.uk", "ny50", "Y", "staff"},
+				{"Paula Severi", "ps396@leicester.ac.uk", "ps396", "Y", "staff"}
+		};
+		
+		try {
+			String insertQuery = "INSERT INTO Staff (staff_name, email, username, is_supervisor, role) VALUES (?, ?, ?, ?, ?)";
+            PreparedStatement ptst = conn.prepareStatement(insertQuery);
+            int insertCount = 0;
+            
+            for(String[] staff : staffData) {
+            	String staffName = staff[0]; 
+            	String email = staff[1];
+            	String username = staff[2];
+            	String is_supervisor = staff[3];
+            	String role = staff[4];
+            	
+            	
+            	ptst.setString(1, staffName);
+            	ptst.setString(2, email);
+            	ptst.setString(3, username);
+            	ptst.setString(4, is_supervisor);
+            	ptst.setString(5, role);
+            	
+            	insertCount = ptst.executeUpdate();
+            }
+            
+            if(insertCount > 0) {
+            	System.out.println("Inserted Successfulyy....");
+            }
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+	}
+	
+	public static void insertLogin(Connection conn) {
+		String[][] loginData = {
+				{"1","1","avm8","Akash@123","S"},
+				{"2","1","rar37","Rosh00@","S"}
+		};
+		
+		try {
+			
+			String insertQuery = "INSERT INTO Login (student_id, staff_id, username, password, role) VALUES (?, ?, ?, ?, ?)";
+            PreparedStatement ptst = conn.prepareStatement(insertQuery);
+            int insertCount = 0;
+            
+            for(String[] user : loginData) {
+            	String studentID = user[0]; 
+            	String staffID = user[1];
+            	String username = user[2];
+            	String password = user[3];
+            	String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
+            	String role = user[4];
+            	
+            	ptst.setInt(1, Integer.parseInt(studentID));
+            	ptst.setInt(2, Integer.parseInt(staffID));
+            	ptst.setString(3, username);
+            	ptst.setString(4, hashedPassword);
+            	ptst.setString(5, role);
+            	
+            	insertCount = ptst.executeUpdate();
+            }
+            
+            if(insertCount > 0) {
+            	System.out.println("Inserted Successfulyy....");
+            }
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+	}
+
+}

@@ -1,0 +1,202 @@
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<%@ page import="java.sql.Connection, java.sql.PreparedStatement, java.sql.ResultSet, java.sql.SQLException, java.util.List, 
+java.util.ArrayList, database.MySQLConnection, java.util.HashMap, java.util.Map, model.User" %>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Student Home</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #dddddd;
+            text-align: center;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        button{
+        	background-color: #4CAF50; /* Green */
+                border: none;
+                color: white;
+                padding: 15px 32px;
+                text-align: center;
+                text-decoration: none;
+                display: inline-block;
+                font-size: 16px;
+                margin: 4px 2px;
+                transition-duration: 0.4s;
+                cursor: pointer;
+                border-radius: 12px;
+        }
+        .logout-icon {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+        }
+        .logout-text {
+            display: none;
+            position: absolute;
+            top: 40px;
+            right: -10px;
+            background-color: #fff;
+            padding: 5px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+        .logout-icon img {
+            width: 30px; 
+            height: auto;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+</head>
+<body>
+<%
+            if (request.getParameter("saved") != null) {%>
+        <script>alert('Preferences saved successfully');</script>  
+        <%}
+        %>
+
+<%
+        //Retrieve username from session
+        String userName = session.getAttribute("username").toString();
+		
+    %>
+<h3>Hi <%=userName %>, Login successful.</h3>
+
+<div class="logout-icon" onclick="toggleLogoutText()">
+            <img src="images/logout.png" alt="Logout">
+        <div class="logout-text" id="logout-text" onclick="logout()">
+            Logout
+        </div>
+    </div>
+<br>
+    <h2>Topics and Preferences</h2>
+    <form action="savePreferencesServlet" id="preferencesForm" method="post">
+    <table>
+        <thead>
+            <tr>
+                <th>Topic</th>
+                <th>Preference 1</th>
+                <th>Preference 2</th>
+                <th>Preference 3</th>
+                <th>Preference 4</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Assuming you have fetched topics and preferences from the database -->
+            <%
+                // Perform database operations to fetch topics
+                List<String> topics = new ArrayList<>();
+                // Assuming you have a method to get a database connection
+                try (Connection conn = MySQLConnection.getConnection()) {
+                    String query = "SELECT topic_name FROM finalproject.topics where is_available = 'Y'";
+                    PreparedStatement statement = conn.prepareStatement(query);
+                    ResultSet resultSet = statement.executeQuery();
+
+                    while (resultSet.next()) {
+                        topics.add(resultSet.getString("topic_name"));
+                    }
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+
+                // Loop through topics and display them with preference radio buttons
+                for (String topic : topics) {
+            %>
+            <tr>
+                <td><%= topic %></td>
+                <td><input type="radio" name="<%= topic %>" value="1" data-col="1" onchange="checkPreferences()"></td>
+                <td><input type="radio" name="<%= topic %>" value="2" data-col="2" onchange="checkPreferences()"></td>
+                <td><input type="radio" name="<%= topic %>" value="3" data-col="3" onchange="checkPreferences()"></td>
+                <td><input type="radio" name="<%= topic %>" value="4" data-col="4" onchange="checkPreferences()"></td>
+            </tr>
+            <% } %>
+        </tbody>
+    </table>
+    <div style="text-align: center; margin-top: 20px;">
+    <button type="submit" id="saveButton" disabled="disabled">Save Preferences</button>
+    <p id="message" style="color: red; display: none">Please select 4 preferences</p>
+    </div>
+    <div style="text-align: center; margin-top: 10px;">
+    <button type="reset" onclick="window.location.reload();">Reset</button>
+</div>
+    </form>
+    
+    <script>
+
+    function toggleLogoutText() {
+        var logoutText = document.getElementById('logout-text');
+        logoutText.style.display = (logoutText.style.display === 'none' || logoutText.style.display === '') ? 'block' : 'none';
+    }
+
+    function logout() {
+        location.href = 'logout.jsp';
+    }
+    var col, el;
+
+    $("input[type=radio]").click(function() {
+        el = $(this);
+        col = el.data("col");
+        $("input[data-col=" + col + "]").prop("checked", false);
+        el.prop("checked", true);
+    });
+    
+ // Function to check if each preference is selected for exactly one topic
+    function checkPreferences() {
+        var topics = document.querySelectorAll('input[type="radio"]');
+        var pref1Count = 0;
+        var pref2Count = 0;
+        var pref3Count = 0;
+        var pref4Count = 0;
+
+        // Iterate through all radio buttons
+        topics.forEach(function(topic) {
+            if (topic.checked) {
+                // Get the value of the selected preference
+                var preferenceValue = topic.value;
+                // Increment the count for the preference
+                if (preferenceValue === "1") {
+                    pref1Count++;
+                } else if (preferenceValue === "2") {
+                    pref2Count++;
+                } else if (preferenceValue === "3") {
+                    pref3Count++;
+                } else if (preferenceValue === "4") {
+                    pref4Count++;
+                }
+            }
+        });
+
+        // Enable the save button if each preference is selected for exactly one topic
+        var saveButton = document.getElementById('saveButton');
+        saveButton.disabled = !(pref1Count === 1 && pref2Count === 1 && pref3Count === 1 && pref4Count ===1);
+    }
+        
+ // Function to display message when hovering over disabled button
+    document.getElementById('saveButton').addEventListener('mouseover', function(event) {
+        var saveButton = document.getElementById('saveButton');
+        if (saveButton.disabled) {
+            var message = document.getElementById('message');
+            message.style.display = 'block';
+            // Prevent the message from disappearing when mouse moves away from the button
+            saveButton.addEventListener('mouseout', function() {
+                message.style.display = 'none';
+            });
+        }
+    });
+</script>
+    
+</body>
+</html>
