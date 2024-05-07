@@ -17,8 +17,14 @@
 <% if (request.getParameter("ReleasedStudentTopics") != null) {%>
     <script>alert('Student Topics Released Successfully');</script>  
 <% } %>
-<% if (request.getParameter("ReleaseStudentFailed") != null) {%>
+<% if (request.getParameter("SupTopicsNotReleased") != null) {%>
     <script>alert('Student Topic Release failed. Supervisor topics may not be released yet..');</script>  
+<% } %>
+<% if (request.getParameter("SupNotSaved") != null) {%>
+    <script>alert('Release Topics failed.Supervisors may not chosen their preferences yet..');</script>  
+<% } %>
+<% if (request.getParameter("ReleaseStudentFailed") != null) {%>
+    <script>alert('Student Topic Release failed.');</script>  
 <% } %>
 <% if (request.getParameter("ReleasedSupervisorTopics") != null) {%>
     <script>alert('Supervisor Topics Released Successfully');</script>  
@@ -117,11 +123,11 @@
             <form action="releaseTopics" method="post" class="row">
     <!-- Button 1 -->
     <div class="col-6">
-        <button type="button" name="action" value="releaseStudentTopics" class="btn btn-success">Release Student Topics</button>
+        <button type="button" onclick="prepareAndShowModal('releaseStudentTopics')" class="btn btn-success">Release Student Topics</button>
     </div>
     <!-- Button 2 -->
     <div class="col-6">
-        <button type="button" name="action" value="releaseSupervisorTopics" class="btn btn-success">Release Supervisor Topics</button>
+        <button type="button" onclick="prepareAndShowModal('releaseSupervisorTopics')" class="btn btn-success">Release Supervisor Topics</button>
     </div>
 </form>
         </div>
@@ -203,11 +209,12 @@
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <form action="scheduleRelease" method="post">
+            <form action="releaseTopics" method="post">
+            <input type="hidden" id="actionField" name="action" value="">
                 <div class="modal-body">
                     <div class="form-group">
                         <label for="departmentSelect">Select Department:</label>
-                        <select class="form-control" id="department" name="department">
+                        <select class="form-control" id="department" name="department" required="required">
                             <option value="">All Departments</option>
     <% for(String dept : departments) {  %>
     <option value="<%= dept %>"><%= dept %></option>
@@ -215,8 +222,8 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="dateTimePicker">Choose Date and Time:</label>
-                        <input type="datetime-local" class="form-control" id="dateTimePicker" name="dateTime">
+                        <label for="dateTimePicker">Choose Submission Deadline:</label>
+                        <input type="datetime-local" class="form-control" id="dateTimePicker" name="dateTime" required="required">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -256,9 +263,11 @@ document.addEventListener('DOMContentLoaded', function() {
     setMinDateTime();
     setInterval(setMinDateTime, 60000); // Update min datetime every minute
 });
-</script>
 
-
-    
+function prepareAndShowModal(action) {
+    document.getElementById('actionField').value = action; 
+    $('#confirmationModal').modal('show');
+}
+</script>    
 </body>
 </html>

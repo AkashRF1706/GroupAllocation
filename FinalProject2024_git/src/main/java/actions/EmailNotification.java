@@ -1,5 +1,8 @@
 package actions;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 
@@ -10,9 +13,18 @@ import javax.mail.Session;
 import javax.mail.Transport;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
-public class EmailNotification{
+@WebServlet("/releaseResults")
+public class EmailNotification extends HttpServlet{
 	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	String host = "smtp.gmail.com";
 	String port = "587";
 	String fromEmail = "akashrf1706@gmail.com";
@@ -75,5 +87,18 @@ public class EmailNotification{
 	    }
 	}
 
+	protected synchronized void doPost(HttpServletRequest req, HttpServletResponse res) throws IOException {
+		String[] emails = req.getParameterValues("emails");
+		
+		List<String> allEmails = new ArrayList<>(Arrays.asList(emails));
+		try {
+			sendEmailToRecipients(allEmails, "Group Allocations Released", "Hi,\n\n This is to notify you about your group allocation results have been released.\n\nBest Regards,\nMSc. Project Testing");
+			res.sendRedirect("formedGroups.jsp?success");
+		} catch (MessagingException e) {
+			// TODO Auto-generated catch block
+			res.sendRedirect("formedGroups.jsp?failure");
+			e.printStackTrace();
+		}
+	}
 
 }

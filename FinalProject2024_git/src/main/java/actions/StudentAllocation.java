@@ -261,12 +261,12 @@ public class StudentAllocation extends HttpServlet{
         if(!supervisorsList.contains(-1) && !secondMarkersList.contains(-1)) {
         	jsonResponse.put("status", "success");
             jsonResponse.put("message", "Algorithm run successfully!");
-            jsonResponse.put("redirectUrl", "formedGroups.jsp");
+            jsonResponse.put("redirectUrl", "formedGroups.jsp?department="+department);
         } else {
         	// Message to admin
         	jsonResponse.put("status", "success");
             jsonResponse.put("message", "Cannot be allocated optimally. Check the preferences and run again.");
-            jsonResponse.put("redirectUrl", "formedGroups.jsp");
+            jsonResponse.put("redirectUrl", "formedGroups.jsp?department="+department);
         }
 		} catch (Exception e) {
 			// TODO: handle exception

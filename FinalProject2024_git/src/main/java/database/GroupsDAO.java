@@ -22,20 +22,23 @@ public class GroupsDAO {
 		}
     }
     
-    public List<Group> getAllGroups() {
+    public List<Group> getAllGroups(String department) {
         List<Group> groups = new ArrayList<>();
         
         try {
             String query = "SELECT g.group_name, "
             		+ " (SELECT GROUP_CONCAT(s.student_name ORDER BY FIND_IN_SET(s.student_id, g.students) ASC SEPARATOR ', ') "
             		+ "  FROM students s "
-            		+ "  WHERE FIND_IN_SET(s.student_id, g.students) > 0) AS StudentNames, "
+            		+ "  WHERE FIND_IN_SET(s.student_id, g.students) > 0 AND s.department = ?) AS StudentNames, "
             		+ " (SELECT staff_name FROM staff WHERE staff_id = g.second_marker) AS SecondMarker, "
             		+ "  (SELECT staff_name FROM staff WHERE staff_id = g.supervisor_id) AS Supervisor, "
             		+ "  t.topic_name "
             		+ "	FROM discussiongroups g "
-            		+ " LEFT JOIN topics t ON t.topic_id = CAST(SUBSTRING(g.group_name FROM 2 FOR POSITION('-' IN g.group_name) - 2) AS UNSIGNED)";
+            		+ " LEFT JOIN topics t ON t.topic_id = CAST(SUBSTRING(g.group_name FROM 2 FOR POSITION('-' IN g.group_name) - 2) AS UNSIGNED) "
+            		+ " WHERE EXISTS (SELECT 1 FROM students s WHERE FIND_IN_SET(s.student_id, g.students) > 0 AND s.department = ?)";
             PreparedStatement statement = connection.prepareStatement(query);
+            statement.setString(1, department);
+            statement.setString(2, department);
             ResultSet resultSet = statement.executeQuery();
             
             while (resultSet.next()) {
@@ -57,5 +60,28 @@ public class GroupsDAO {
         }
         
         return groups;
+    }
+    
+    public List<String> getStudentAndSupervisorEmails (String department){
+    	List<String> emailList = new ArrayList<String>();
+    	
+    	try {
+    		
+    		String sql = "(SELECT email FROM students WHERE group_id IS NOT NULL AND department = ?) UNION (SELECT email FROM staff WHERE group_id IS NOT NULL AND department = ?)";
+    		PreparedStatement ptst = connection.prepareStatement(sql);
+    		ptst.setString(1, department);
+    		ptst.setString(2, department);
+    		ResultSet rs = ptst.executeQuery();
+    		
+    		while(rs.next()) {
+    			String email = rs.getString("email");
+    			emailList.add(email);
+    		}
+    		
+    	} catch (Exception e) {
+			// TODO: handle exception
+    		e.printStackTrace();
+		}
+    	return emailList;
     }
 }

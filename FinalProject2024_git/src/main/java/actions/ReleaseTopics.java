@@ -13,6 +13,9 @@ import java.sql.ResultSet;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 
 @WebServlet("/releaseTopics")
 public class ReleaseTopics extends HttpServlet {
@@ -27,6 +30,15 @@ public class ReleaseTopics extends HttpServlet {
         // Get the action parameter from the POST request
     	response.setContentType("text/html");
         String action = request.getParameter("action");
+        String department = request.getParameter("department");
+        String dateTimeInput = request.getParameter("dateTime");
+        
+        DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
+        LocalDateTime dateTime = LocalDateTime.parse(dateTimeInput, inputFormatter);
+        
+        DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String formattedDateTime = dateTime.format(outputFormatter);        
+        System.out.println(formattedDateTime);
         try {
         	Connection conn = MySQLConnection.getConnection();        
 
@@ -46,20 +58,37 @@ public class ReleaseTopics extends HttpServlet {
             	}
             }
             
-            StringJoiner topicIdList = new StringJoiner(",");
-            for(String id : uniqueTopicIds) {
-            	topicIdList.add(id);
+            if (!uniqueTopicIds.isEmpty()) {
+                StringJoiner topicIdList = new StringJoiner("','", "'", "'");
+                uniqueTopicIds.forEach(topicIdList::add);
+
+                String updateQuery = "UPDATE topics SET is_available = 'Y' WHERE topic_id IN (" + topicIdList + ") AND is_available = 'P' AND department = ?";
+                PreparedStatement updatePtst = conn.prepareStatement(updateQuery);
+                updatePtst.setString(1, department);
+                int updateCount = updatePtst.executeUpdate();
+
+                // Checking the update count to see if the rows were successfully updated
+                if (updateCount > 0) {
+                    // If topics are updated successfully, then update the deadline table
+                    String deadlineUpdateQuery = "INSERT INTO deadlines (department, student_deadline) VALUES (?, ?) ON DUPLICATE KEY UPDATE student_deadline = ?";
+                    PreparedStatement deadlineStmt = conn.prepareStatement(deadlineUpdateQuery);
+                    deadlineStmt.setString(1, department);
+                    deadlineStmt.setString(2, formattedDateTime); 
+                    deadlineStmt.setString(3, formattedDateTime);
+                    int deadlineUpdateCount = deadlineStmt.executeUpdate();
+
+                    if (deadlineUpdateCount > 0) {
+                        response.sendRedirect("adminHome.jsp?ReleasedStudentTopics");
+                    } else {
+                        response.sendRedirect("adminHome.jsp?ReleaseStudentFailed");
+                    }
+                } else {
+                    response.sendRedirect("adminHome.jsp?SupTopicsNotReleased");
+                }
+            } else {
+                response.sendRedirect("adminHome.jsp?SupNotSaved");
             }
-            
-            String updateQuery = "Update topics set is_available = 'Y' where topic_id in (" + topicIdList + ") and is_available = 'P'";
-            PreparedStatement updatePtst = conn.prepareStatement(updateQuery);
-            int updateCount = updatePtst.executeUpdate();
-            
-            if(updateCount > 0) {
-            	response.sendRedirect("adminHome.jsp?ReleasedStudentTopics");
-            }else {
-            	response.sendRedirect("adminHome.jsp?ReleaseStudentFailed");
-            }
+
             
         } else if ("releaseSupervisorTopics".equals(action)) {
             //Supervisor topic release logic
@@ -68,7 +97,18 @@ public class ReleaseTopics extends HttpServlet {
             int updateCount = updateStatement.executeUpdate();
             
             if(updateCount > 0) {
-            	response.sendRedirect("adminHome.jsp?ReleasedSupervisorTopics");
+            	String deadlineUpdateQuery = "INSERT INTO deadlines (department, staff_deadline) VALUES (?, ?) ON DUPLICATE KEY UPDATE staff_deadline = ?";
+            	PreparedStatement deadlineStmt = conn.prepareStatement(deadlineUpdateQuery);
+                deadlineStmt.setString(1, department);
+                deadlineStmt.setString(2, formattedDateTime); 
+                deadlineStmt.setString(3, formattedDateTime);
+                int deadlineUpdateCount = deadlineStmt.executeUpdate();
+                
+                if(deadlineUpdateCount > 0) {
+                	response.sendRedirect("adminHome.jsp?ReleasedSupervisorTopics");
+                } else {
+                	response.sendRedirect("adminHome.jsp?ReleaseSupervisorFailed");
+				}
             }else {
             	response.sendRedirect("adminHome.jsp?ReleaseSupervisorFailed");
             }            

@@ -1,5 +1,6 @@
+<%@page import="java.util.ArrayList"%>
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ page import="java.util.List, model.Group, database.GroupsDAO"%>
+<%@ page import="java.util.List, model.Group, database.GroupsDAO, database.DepartmentDAO"%>
 <!DOCTYPE html>
 <html>
 <head>
@@ -10,6 +11,12 @@
     <link rel="stylesheet" href="css/landing.css">
 </head>
 <body>
+<% if (request.getParameter("success") != null) {%>
+    <script>alert('Results released successfully');</script>  
+<% } %>
+<% if (request.getParameter("failure") != null) {%>
+    <script>alert('Email notification failed. Please try again...');</script>  
+<% } %>
 <div id="wrapper">
     <!-- Sidebar -->
     <div id="sidebar-wrapper">
@@ -22,8 +29,18 @@
         </ul>
     </div>
 <%
+DepartmentDAO departmentsDAO = new DepartmentDAO();
+List<String> departments = departmentsDAO.getAllDepartmentsForTopic();
+String selectedDepartment = request.getParameter("department");
 String name = session.getAttribute("Name").toString();
-    List<Group> groups = new GroupsDAO().getAllGroups();
+    List<Group> groups = new ArrayList<Group>();
+    List<String> emails = new ArrayList<String>();
+    if(selectedDepartment != null && !selectedDepartment.isEmpty()){
+    	GroupsDAO gd = new GroupsDAO();
+    	groups = gd.getAllGroups(selectedDepartment);
+    	emails = gd.getStudentAndSupervisorEmails(selectedDepartment);
+    }
+    
 %>
     <!-- Page Content -->
     <div id="page-content-wrapper">
@@ -32,7 +49,21 @@ String name = session.getAttribute("Name").toString();
             <div class="row">
                 <div class="col-lg-12">
                 <h1>Formed Groups</h1>
-                <%if(groups != null && !groups.isEmpty()){ %>
+                <form action="formedGroups.jsp" method="get">
+            <div class="form-group">
+            <label for="departmentSelect">Select Department:</label>
+            <select class="form-control" id="departmentSelect" name="department">
+    <option value="All">All</option>
+    <% for(String dept : departments) { 
+    String selected = dept.equals(selectedDepartment) ? "selected" : "";%>
+        <option value="<%= dept %>" <%= selected %>><%= dept %></option>
+    <% } %>
+</select>
+</div>
+<button type="submit" class="btn btn-primary">Filter</button>
+</form>
+            
+                <%if(selectedDepartment != null && !selectedDepartment.isEmpty() && groups != null && !groups.isEmpty()){ %>
                 <div class="table-container" style="display: block;">
                     <table class="table table-bordered">
                         <thead class="thead-light">
@@ -64,9 +95,22 @@ String name = session.getAttribute("Name").toString();
                         </tbody>
                     </table>
                 </div>
-                <%} else{%>
-                <h3 style="color: grey; text-align: center">No Groups to display</h3>
+                <form action="releaseResults" method="post">
+    <div class="text-center">
+        <% for (String email : emails) { %>
+            <input type="hidden" name="emails" value="<%= email %>">
         <% } %>
+        <button type="submit" class="btn btn-success">Release Results and Notify</button>
+    </div>
+</form>
+<br>
+                
+                <%} else if(selectedDepartment == null || selectedDepartment.isEmpty()){%>
+                <h3 style="color: grey; text-align: center">Please select a department</h3>
+        <% } else if(selectedDepartment != null && !selectedDepartment.isEmpty() && (groups == null || groups.isEmpty())){ %>
+        <h3 style="color: grey; text-align: center">No Groups to display</h3>
+        <%} %>
+        
                 </div>
             </div>
         </div>
