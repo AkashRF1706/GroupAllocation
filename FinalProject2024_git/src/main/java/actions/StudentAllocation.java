@@ -240,6 +240,15 @@ public class StudentAllocation extends HttpServlet{
         System.out.println("After Redistribution:");
         printAllocation(topicGroupCount);
         
+        List<Integer> unallocatedStudents = new ArrayList<Integer>();
+        unallocatedStudents = getUnallocatedStudents(topicGroupCount, minGroupSize);
+        
+        if(unallocatedStudents == null || unallocatedStudents.isEmpty()) {
+        	jsonResponse.put("status", "success");
+        	jsonResponse.put("message", "Student could not be allocated optimally. Please modify the student preferences.");
+        	jsonResponse.put("redirectUrl", "sendEmails.jsp?department=" + department + "&studentIds=" + unallocatedStudents.toString().replaceAll("[\\[\\] ]", ""));
+        }
+        
         // Supervisors allocating algorithm
         GroupManagement gm = new GroupManagement();
         Map<String, List<Object>> formedGroup = new HashMap<String, List<Object>>();
@@ -505,6 +514,28 @@ System.out.println("Setup complete, running flow algorithm...");
             }
         }
     }
-
-	
+    
+   private static List<Integer> getUnallocatedStudents(Map<String, Object[]> topicGroupCount, int minGroupSize){
+	   List<Integer> unallocatedStudents = new ArrayList<Integer>();
+	   
+	   try {
+		   if (topicGroupCount != null) {
+	            topicGroupCount.forEach((topic, details) -> {
+	                @SuppressWarnings("unchecked")
+	                List<List<Integer>> studentGroups = (List<List<Integer>>) details[0];
+	                
+	                // Iterate over each group and check if underfilled
+	                for (List<Integer> group : studentGroups) {
+	                    if (group.size() < minGroupSize) {
+	                    	unallocatedStudents.addAll(group);
+	                    }
+	                }
+	            });
+		   }
+	   }catch (Exception e) {
+		// TODO: handle exception
+		   e.printStackTrace();
+	}
+	   return unallocatedStudents;
+   }
 }
