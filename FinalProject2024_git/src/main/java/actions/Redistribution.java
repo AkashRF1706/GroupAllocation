@@ -25,7 +25,7 @@ public class Redistribution {
 			for (List<Integer> group : groups) {
 				if (group.size() < minGroupSize) {
 					// Attempt to redistribute each student in underfilled groups
-					for (Integer studentId : new ArrayList<>(group)) { // Copy to avoid concurrent modification
+					for (Integer studentId : new ArrayList<>(group)) {
 						for (String preference : students.get(studentId)) {
 							if (tryReallocateStudentToGroup(preference, studentId, topicGroupCount, minGroupSize,
 									maxGroupSize, topicUseLimit)) {
@@ -45,7 +45,7 @@ public class Redistribution {
 			groups.removeAll(groupsToRemove);
 		});
 
-		// Optionally, log or print reallocated students and their new groups
+		// Print reallocated students and their new groups
 		reallocatedStudents.forEach((studentId, newGroup) -> System.out
 				.println("Student " + studentId + " was reallocated to " + newGroup));
 
@@ -91,8 +91,6 @@ public class Redistribution {
 				if (!underfilledStudents.contains(studentId)) {
 					underfilledStudents.add(studentId);
 				}
-				// attemptComplexRedistribution(studentId, topicGroupCount, students,
-				// minGroupSize, maxGroupSize);
 			}
 		});
 		StudentAllocation sa = new StudentAllocation();
@@ -101,6 +99,7 @@ public class Redistribution {
 		if (!underfilledStudents.isEmpty()) {
 			for (int student : underfilledStudents) {
 				if(attemptComplexRedistribution(student, topicGroupCount, students, minGroupSize, maxGroupSize, topicUseLimit)) {
+					//Break after redistributed
 					break;
 				}
 			}
@@ -206,7 +205,7 @@ public class Redistribution {
 									removeStudentFromAllGroups(unallocatedStudentId, topicGroupCount, topic, i);
 									break outerloop;
 								} else {
-									// If the group is at max capacity, see if any member can be moved to another
+									// If the group is at max capacity, checking if any member can be moved to another
 									// group
 									for (Integer memberId : new ArrayList<>(group)) {
 										if (tryFindAndReallocate(memberId, unallocatedStudentId, topicGroupCount,
@@ -236,7 +235,7 @@ public class Redistribution {
 			List<List<Integer>> groups = (List<List<Integer>>) entry.getValue()[0];
 
 			for (List<Integer> group : groups) {
-		        if (group.size() < minGroupSize) {
+		        if (group.size() < minGroupSize) { //Checking for valid groups
 		            allGroupsValid = false; 
 		            break;
 		        }
@@ -250,7 +249,7 @@ public class Redistribution {
 			redistributionDone = true;
 		}
 
-		if (!reallocated) {
+		if (!reallocated) { //Reshuffle other groups if not allocated before
 			for (Map.Entry<String, Object[]> entry : topicGroupCount.entrySet()) {
 				String topic = entry.getKey();
 				@SuppressWarnings("unchecked")
@@ -262,13 +261,13 @@ public class Redistribution {
 							for (String pref : students.get(studentId)) {
 								if (unallocatedStudentPrefs.contains(pref)) {
 									if (!potentialNewGroups.containsKey(pref)) {
-										potentialNewGroups.put(pref, new ArrayList<>());
+										potentialNewGroups.put(pref, new ArrayList<>()); //Create list for topic
 									}
 									if (!potentialNewGroups.get(pref).contains(unallocatedStudentId)) {
-										potentialNewGroups.get(pref).add(unallocatedStudentId);
+										potentialNewGroups.get(pref).add(unallocatedStudentId); //Add unallocated student to potential topic group
 									}
 									if (!potentialNewGroups.get(pref).contains(studentId)) {
-										potentialNewGroups.get(pref).add(studentId);
+										potentialNewGroups.get(pref).add(studentId); //Add student from other group to the potential topic group
 									}
 								}
 							}
@@ -317,7 +316,7 @@ public class Redistribution {
 			List<Integer> updatesList = new ArrayList<Integer>();
 			List<Integer> newCandidateIds = new ArrayList<Integer>();
 			newCandidateIds.add(unallocatedStudentId);
-			outerloop: for (Map.Entry<String, List<Integer>> entry : potentialNewGroups.entrySet()) {
+			outerloop: for (Map.Entry<String, List<Integer>> entry : potentialNewGroups.entrySet()) { //Iterate potential topic groups
 				String topic = entry.getKey();
 				List<Integer> candidateIds = entry.getValue();
 				if (candidateIds.size() >= minGroupSize) {
@@ -329,8 +328,9 @@ public class Redistribution {
 						int studentIndex = studentToOriginalGroupIndex.get(candidateId);
 
 						if (spotsList.get(studentIndex) - 1 >= minGroupSize) {
-							spotsList.set(studentIndex, spotsList.get(studentIndex) - 1);
-							newCandidateIds.add(candidateId);
+							//Remove student from original group considering min group constraint
+							spotsList.set(studentIndex, spotsList.get(studentIndex) - 1); 
+							newCandidateIds.add(candidateId); //Add to new list
 						} else {
 							break;
 						}
@@ -344,18 +344,19 @@ public class Redistribution {
 							for (List<Integer> topicGroup : topicGroups) {
 								if ((topicGroup.size() + newCandidateIds.size()) > maxGroupSize
 										&& topicGroups.size() < topicUseLimit) {
-									updates.put(topic, newCandidateIds);
+									//Add new list to group considering max group size constraint
+									updates.put(topic, newCandidateIds); 
 									break outerloop;
 								} else if ((topicGroup.size() + newCandidateIds.size()) <= maxGroupSize) {
+									//Form new group if existing group and new list combined is less than max group size
 									List<Integer> newGroup = new ArrayList<Integer>();
 									newGroup.addAll(topicGroup);
 									newGroup.addAll(newCandidateIds);
 									for(int student : newGroup) {
+										//Remove new group students from original group
 										removeFromCurrentGroup(topicGroupCount, student, studentToOriginalTopic);
 									}
 									topicGroup.addAll(newCandidateIds);
-									//updatesList.addAll(topicGroup);
-									//updates.put(topic, updatesList);
 									break outerloop;
 								}
 							}

@@ -29,18 +29,21 @@ public class GroupManagement {
                 int assignedSupervisorId = originalSupervisorId;
                 if (i == 0) {
                     if (supervisorCapacities.get(originalSupervisorId) != null && supervisorCapacities.get(originalSupervisorId) > 0) {
+                    	//Add algorithm allocated supervisor to group if capacity > 0
                         groupInfo.add(groupStudents);
                         groupInfo.add(originalSupervisorId);
                     } else {
+                    	//Else find available supervisor
                         Optional<Integer> newSupervisorId = findSuitableSupervisor(supervisors, supervisorCapacities, topic, originalSupervisorId);
                         if (newSupervisorId.isPresent()) {
                             assignedSupervisorId = newSupervisorId.get();
-                            supervisorCapacities.put(assignedSupervisorId, supervisorCapacities.get(assignedSupervisorId) - 1);
+                            supervisorCapacities.put(assignedSupervisorId, supervisorCapacities.get(assignedSupervisorId) - 1); // Update supervisor capacity
                         }
                         groupInfo.add(groupStudents);
                         groupInfo.add(assignedSupervisorId);
                     }
                 } else {
+                	//Find new supervisor if single topic has multiple groups 
                     Optional<Integer> newSupervisorId = findSuitableSupervisor(supervisors, supervisorCapacities, topic, originalSupervisorId);
                     if (newSupervisorId.isPresent()) {
                         assignedSupervisorId = newSupervisorId.get();
@@ -48,9 +51,11 @@ public class GroupManagement {
                         groupInfo.add(groupStudents);
                         groupInfo.add(assignedSupervisorId);
                     } else if(supervisorCapacities.get(originalSupervisorId) > 0) {
+                    	//Add the original supervisor if capacity and no new supervisor could be found and
                     	groupInfo.add(groupStudents);
                     	groupInfo.add(assignedSupervisorId);
                     } else {
+                    	//If no supervisor found allot -1 as flag
 						groupInfo.add(studentGroups);
 						groupInfo.add("-1");
 					}
@@ -74,7 +79,8 @@ public class GroupManagement {
     }
 
     private static Optional<Integer> findSuitableSupervisor(Map<Integer, List<String>> supervisors, Map<Integer, Integer> supervisorCapacities, String topic, int excludeId) {
-        return supervisors.entrySet().stream()
+    	 //Check for supervisor capacity and exclude the original supervisor
+    	return supervisors.entrySet().stream()
                 .filter(entry -> entry.getValue().contains(topic) && supervisorCapacities.get(entry.getKey()) > 0 && entry.getKey() != excludeId)
                 .map(Map.Entry::getKey)
                 .findFirst();

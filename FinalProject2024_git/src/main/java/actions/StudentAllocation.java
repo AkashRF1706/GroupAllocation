@@ -52,6 +52,7 @@ public class StudentAllocation extends HttpServlet{
 		System.out.println(department);
 		
 		if(maxGroupSize < 4 || maxGroupSize > numStudents) {
+			//Send response to admin if maxgroupsize is invalid
 			jsonResponse.put("status", "success");
 			jsonResponse.put("message", "Max Students per group must be between 4 and " +numStudents);
             jsonResponse.put("redirectUrl", "runAlgorithm.jsp?department="+deptUrl);
@@ -59,6 +60,7 @@ public class StudentAllocation extends HttpServlet{
     		out.flush();
     		out.close();
 		} if(topicUseLimit < 1 || topicUseLimit > 5) {
+			//Send response to admin if topicUseLimit is invalid
 			jsonResponse.put("status", "success");
 			jsonResponse.put("message", "Topic Use Limit must be between 1 and 5");
             jsonResponse.put("redirectUrl", "runAlgorithm.jsp?department="+deptUrl);
@@ -112,6 +114,7 @@ public class StudentAllocation extends HttpServlet{
         System.out.println("Before Redistribution:");
         printAllocation(topicGroupCount);
         
+     // Redistribute students   
         Redistribution redistribution = new Redistribution();
         topicGroupCount = redistribution.redistributeStudents(topicGroupCount, students, minGroupSize, maxGroupSize, topicUseLimit);
         
@@ -234,28 +237,31 @@ public class StudentAllocation extends HttpServlet{
 	
 	private static void setupGraph(Graph<String, DefaultWeightedEdge> G, Map<Integer, List<String>> students, Map<Integer, List<String>> supervisors, List<String> topics, Map<Integer, Integer> supervisorCapacities, int maxGroupSize, int topicUseLimit) {System.out.println("Adding vertices and edges...");
 
+// Add source and sink vertices
 G.addVertex("source");
 G.addVertex("sink");
+
 students.keySet().forEach(s -> {
     String studentVertex = "s" + s;
-    G.addVertex(studentVertex);
+    G.addVertex(studentVertex); //Add Student vertex
     G.addEdge("source", studentVertex);
-    G.setEdgeWeight(G.getEdge("source", studentVertex), 1);
+    G.setEdgeWeight(G.getEdge("source", studentVertex), 1); //Add edge between source and student with weight as 1
     System.out.println("Added edge from source to " + studentVertex);
 });
 
 topics.forEach(t -> {
-    G.addVertex(t);
+    G.addVertex(t); // Add topic vertex
     G.addEdge(t, "sink");
-    G.setEdgeWeight(G.getEdge(t, "sink"), 1);
+    G.setEdgeWeight(G.getEdge(t, "sink"), 1); // Add edge between topics and sink with weight 1
     System.out.println("Added edge from " + t + " to sink");
 });
 
 supervisors.keySet().forEach(supervisorId -> {
     String supervisorVertex = "supervisor" + supervisorId;
-    G.addVertex(supervisorVertex);
+    G.addVertex(supervisorVertex); // Add supervisor vertex
     G.addEdge(supervisorVertex, "sink");
-    G.setEdgeWeight(G.getEdge(supervisorVertex, "sink"), supervisorCapacities.get(supervisorId));
+ // Add edge between supervisor and sink with supervisor capacity as weight
+    G.setEdgeWeight(G.getEdge(supervisorVertex, "sink"), supervisorCapacities.get(supervisorId)); 
     System.out.println("Added edge from " + supervisorVertex + " to sink");
 });
 
@@ -263,10 +269,10 @@ students.forEach((studentId, prefs) -> {
     for (int i = 0; i < prefs.size(); i++) {
         String pref = prefs.get(i);
         if (G.containsVertex("s" + studentId) && G.containsVertex(pref)) {
-            DefaultWeightedEdge edge = G.addEdge("s" + studentId, pref);
+            DefaultWeightedEdge edge = G.addEdge("s" + studentId, pref); //Add edge between student and chosen topics
             if (edge != null) {
                 double weight = 5 - (i + 1);
-                G.setEdgeWeight(edge, weight);
+                G.setEdgeWeight(edge, weight); //Set higher weight for high preference 
                 System.out.println("Added edge from s" + studentId + " to " + pref + " with weight " + weight);
             }
         }
@@ -276,8 +282,9 @@ students.forEach((studentId, prefs) -> {
 supervisors.forEach((supervisorId, supervisorTopics) -> {
     supervisorTopics.forEach(topic -> {
         if (G.containsVertex("supervisor" + supervisorId) && G.containsVertex(topic)) {
-            DefaultWeightedEdge edge = G.addEdge(topic, "supervisor" + supervisorId);
+            DefaultWeightedEdge edge = G.addEdge(topic, "supervisor" + supervisorId); // Add edge between topic and supervisor
             if (edge != null) {
+            	// Set supervisor capacity as weight
                 G.setEdgeWeight(edge, supervisorCapacities.get(supervisorId));
                 System.out.println("Added edge from " + topic + " to supervisor" + supervisorId);
             }

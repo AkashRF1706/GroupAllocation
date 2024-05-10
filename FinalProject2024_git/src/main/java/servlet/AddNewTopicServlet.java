@@ -34,9 +34,9 @@ public class AddNewTopicServlet extends HttpServlet {
         }
 
         try (Connection conn = MySQLConnection.getConnection()) {
-            if (!topicExists(conn, topicName, department)) {
-                addNewTopic(conn, topicName, department, supervisorName);
-                List<String> topics = fetchTopics(conn, department);
+            if (!topicExists(conn, topicName, department)) { //Check if topic exists
+                addNewTopic(conn, topicName, department, supervisorName); //Add new topic
+                List<String> topics = fetchTopics(conn, department); //Fetch all topics to display
                 System.out.println(topics.toString());
                 String json = new Gson().toJson(topics);
                 out.print(json);

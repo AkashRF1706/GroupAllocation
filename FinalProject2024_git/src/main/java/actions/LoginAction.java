@@ -53,7 +53,8 @@ public class LoginAction extends HttpServlet {
         		int id = rs.getInt("id");
         		
         		if(status.equalsIgnoreCase("Active")) {
-	        		if(BCrypt.checkpw(password, hashedPassword)) { //Checking user entered password with the hashed password in DB
+        			//Checking user entered password with the hashed password in DB
+	        		if(BCrypt.checkpw(password, hashedPassword)) { 
 	        			HttpSession session = request.getSession(true);
 						User user = new User(username);
 	        			session.setAttribute("username", username);
@@ -64,10 +65,13 @@ public class LoginAction extends HttpServlet {
 	        			session.setAttribute("role", role);
 	                    
 	        			if(role.equalsIgnoreCase("S")) {
+	        				//Student
 	        				response.sendRedirect("studentHome.jsp");
 	        			} else if(role.equalsIgnoreCase("P")) {
+	        				//Supervisor
 	        				response.sendRedirect("supervisorHome.jsp");
 	        			} else if(role.equalsIgnoreCase("A")) {
+	        				//Admin
 	        				response.sendRedirect("adminHome.jsp");
 	        			}
 	        		} else {

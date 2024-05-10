@@ -47,9 +47,9 @@ public class EmailNotification extends HttpServlet{
 		 
 		 try {
 			 	MimeMessage emailMessage = new MimeMessage(session);
-	            emailMessage.setFrom(new InternetAddress(fromEmail));
-	            emailMessage.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
-	            emailMessage.setSubject(subject);
+	            emailMessage.setFrom(new InternetAddress(fromEmail)); //Setting From Address
+	            emailMessage.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail)); //Setting To Address
+	            emailMessage.setSubject(subject); 
 	            emailMessage.setText(message);
 	            Transport.send(emailMessage);
 		 } catch (Exception e) {
@@ -75,7 +75,7 @@ public class EmailNotification extends HttpServlet{
 	        MimeMessage message = new MimeMessage(session);
 	        message.setFrom(new InternetAddress(fromEmail));
 	        for (String email : emailList) {
-	            message.addRecipient(Message.RecipientType.BCC, new InternetAddress(email));
+	            message.addRecipient(Message.RecipientType.BCC, new InternetAddress(email)); //Set each email as BCC
 	        }
 	        message.setSubject(subject);
 	        message.setText(messageBody);

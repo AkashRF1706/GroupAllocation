@@ -29,6 +29,7 @@ public class DailyDeadlineNotification implements ServletContextListener {
     }
 
     private void scheduleDailyTask() {
+    	//Set reminder time
         Calendar calendar = Calendar.getInstance();
         calendar.set(Calendar.HOUR_OF_DAY, 9);
         calendar.set(Calendar.MINUTE, 0);
@@ -50,6 +51,7 @@ public class DailyDeadlineNotification implements ServletContextListener {
     }
     
     private void sendReminders() {
+    	//Select students and supervisors who haven't submitted their preferences yet
     	List<String> studentEmailList = new ArrayList<String>();
     	List<String> supervisorEmailList = new ArrayList<String>();
         try (Connection conn = MySQLConnection.getConnection();
@@ -79,6 +81,7 @@ public class DailyDeadlineNotification implements ServletContextListener {
             }
             
             if(!studentEmailList.isEmpty()) {
+            	//Send email reminder to students
             	String subject = "Reminder: Submit Your Preferences (MSc. Individual Project Testing)";
             	String message = "Hello,\n\n" + "This is a reminder to submit your preferences before the deadline. "
             	+ "Please ignore this message if already submitted.\n\n" + "Best Regards,\n"
@@ -94,6 +97,7 @@ public class DailyDeadlineNotification implements ServletContextListener {
             }
             
             if(!supervisorEmailList.isEmpty()) {
+            	//Send email reminder to supervisors
             	String subject = "Reminder: Submit Your Preferences (MSc. Individual Project Testing)";
             	String message = "Hello,\n\n" + "This is a reminder to submit your preferences before the deadline. "
             	+ "Please ignore this message if already submitted.\n\n" + "Best Regards,\n"

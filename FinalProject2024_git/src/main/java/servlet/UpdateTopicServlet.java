@@ -36,12 +36,14 @@ public class UpdateTopicServlet extends HttpServlet{
 			int updateCount = updatePtst.executeUpdate();
 			
 			if(updateCount > 0) {
+				//Get emails if topic updated
 				String selectQuery = "Select email from staff where staff_name = ?";
 				PreparedStatement ptst = conn.prepareStatement(selectQuery);
 				ptst.setString(1, name);
 				ResultSet rs = ptst.executeQuery();
 				
 				if(rs.next()) {
+					//Send email update to the supervisor
 					String emailId = rs.getString("email");
 					String subject = "New topic Update";
 					String message = "Hi,\n\nYour created topic " +topicName+ " has been " +statusRequest+ " by the admin.\n\nBest Regards,\nMSc. Project Testing";
