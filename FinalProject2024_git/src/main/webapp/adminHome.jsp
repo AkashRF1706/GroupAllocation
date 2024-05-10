@@ -1,7 +1,7 @@
 <%@page import="model.Supervisor"%>
 <%@ page language="java" contentType="text/html; charset=UTF-8"
     pageEncoding="UTF-8"%>
-<%@ page import="java.sql.Connection, java.sql.PreparedStatement, java.sql.ResultSet, database.MySQLConnection, java.sql.SQLException, java.util.List, java.util.ArrayList, model.Student, database.StudentsDAO, database.DepartmentDAO"%>
+<%@ page import="java.sql.Connection, java.util.*,java.sql.PreparedStatement, java.sql.ResultSet, database.MySQLConnection, java.sql.SQLException, java.util.List, java.util.ArrayList, model.Student, database.StudentsDAO, database.DepartmentDAO"%>
 <!DOCTYPE html>
 <html>
 <head>
@@ -12,6 +12,9 @@
     <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
     <link rel="stylesheet" href="css/landing.css">
+    <style>
+        .form-section { background-color: #D3D3D3; padding: 20px; border-radius: 8px; margin-top: 20px; }
+    </style>
 </head>
 <body>
 <% if (request.getParameter("ReleasedStudentTopics") != null) {%>
@@ -32,6 +35,13 @@
 <% if (request.getParameter("ReleaseSupervisorFailed") != null) {%>
     <script>alert('Supervisor Topic Release failed. Please try again..');</script>  
 <% } %>
+<% if(request.getParameter("success") != null) { %>
+    <script>alert('<%= request.getParameter("success") %>');</script>
+<% } %>
+<% if(request.getParameter("error") != null) { %>
+    <script>alert('<%= request.getParameter("error") %>');</script>
+<% } %>
+
     <%
     String name = session.getAttribute("Name").toString();
     DepartmentDAO dd = new DepartmentDAO();
@@ -40,6 +50,7 @@
     int numberOfSupervisors = 0;
     		List<Student> studentList = new ArrayList<>();
     		List<Supervisor> supervisorList = new ArrayList<>();
+    		List<Map<String, String>> topics = new ArrayList<>();
     try (Connection conn = MySQLConnection.getConnection()) {
         // Query for counting students
         PreparedStatement stmt1 = conn.prepareStatement("SELECT COUNT(*) AS count FROM students where student_id !=3");
@@ -70,6 +81,18 @@
         }
         request.setAttribute("students", studentList);
         request.setAttribute("supervisors", supervisorList);
+        
+        PreparedStatement stmt = conn.prepareStatement("SELECT topic_id, topic_name, is_available, department, created_by FROM topics WHERE is_available = 'S'");
+        ResultSet rs = stmt.executeQuery();
+        while (rs.next()) {
+            Map<String, String> topic = new HashMap<>();
+            topic.put("id", rs.getString("topic_id"));
+            topic.put("name", rs.getString("topic_name"));
+            topic.put("status", "Pending");
+            topic.put("department", rs.getString("department"));
+            topic.put("created", rs.getString("created_by"));
+            topics.add(topic);
+        }
     } catch (SQLException e) {
         e.printStackTrace();
     }
@@ -80,9 +103,11 @@
             <ul class="sidebar-nav">
                 <li><a href="adminHome.jsp" class="active">Home Page</a></li>
                 <li><a href="studentPreferences.jsp">Student Preferences</a></li>
+                <li><a href="supervisorPreferences.jsp">Supervisor Preferences</a></li>
                 <li><a href="runAlgorithm.jsp">Run Algorithm</a></li>
                 <li><a href="formedGroups.jsp">Formed Groups</a></li>
-                <li><a href="logout.jsp">Logout</a></li>
+                <li><a href="sendEmails.jsp">Send Email</a></li>
+                <li><a href="#" data-toggle="modal" onclick="showLogoutModal()">Logout</a></li>
             </ul>
         </div>
 
@@ -94,6 +119,7 @@
                     <div class="col-lg-12">
                     <h1>Welcome <%=name %></h1>
                         <h2>Admin Dashboard</h2>
+                        <div class="form-section">
                         <div class="row mt-4">
                             <!-- Student Count Card -->
                             <div class="col-md-6 col-lg-4 mb-3" data-toggle="modal" data-target="#studentDetailsModal" style="cursor: pointer;">
@@ -114,10 +140,9 @@
                                 </div>
                             </div>
 
-                            <!-- Actions -->
 <!-- Actions -->
 <div class="col-md-12 col-lg-4 mb-3">
-    <div class="card">
+    <div class="card" style="background-color: #f8f9fa">
         <div class="card-body">
             <h5 class="card-title">Actions</h5>
             <form action="releaseTopics" method="post" class="row">
@@ -135,8 +160,40 @@
 </div>
 
                         </div>
+                        </div>
                     </div>
                 </div>
+                <br>
+                <%if(topics != null & !topics.isEmpty()){ %>
+                <div style="background-color: #f8f9fa">
+                <h2>Topics Pending Approval</h2>
+    <table class="table table-bordered">
+        <thead class="thead-light">
+            <tr>
+                <th>Topic Name</th>
+                <th>Status</th>
+                <th>Department</th>
+                <th>Created By</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% for (Map<String, String> topic : topics) { %>
+            <tr>
+                <td><%= topic.get("name") %></td>
+                <td><%= topic.get("status") %></td>
+                <td><%= topic.get("department") %></td>
+                <td><%= topic.get("created") %></td>
+                <td>
+                    <button onclick="updateTopicStatus('<%= topic.get("id") %>', 'Approved', '<%=topic.get("created") %>', '<%=topic.get("name") %>')" class="btn btn-success">Approve</button>
+                    <button onclick="updateTopicStatus('<%= topic.get("id") %>', 'Rejected', '<%=topic.get("created") %>', '<%=topic.get("name") %>')" class="btn btn-danger">Reject</button>
+                </td>
+            </tr>
+            <% } %>
+        </tbody>
+    </table>
+    </div>
+    <%} %>
             </div>
         </div>
 
@@ -234,6 +291,26 @@
         </div>
     </div>
 </div>
+    <!-- Logout Modal -->
+<div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="logoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logoutModalLabel">Confirm Logout</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to log out?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </div>
+</div>
 
         
     </div>
@@ -268,6 +345,22 @@ function prepareAndShowModal(action) {
     document.getElementById('actionField').value = action; 
     $('#confirmationModal').modal('show');
 }
+
+function updateTopicStatus(topicId, newStatus, name, topicName) {
+    $.ajax({
+        url: 'UpdateTopicStatusServlet',
+        type: 'POST',
+        data: { topicId: topicId, status: newStatus, name: name, topicName: topicName},
+        success: function(response) {
+            alert('Topic status updated to ' + newStatus);
+            location.reload();
+        },
+        error: function() {
+            alert('Error updating topic status');
+        }
+    });
+}
+
 </script>    
 </body>
 </html>

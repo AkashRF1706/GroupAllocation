@@ -1,10 +1,14 @@
 package model;
 
+import java.util.List;
+
 public class Supervisor {
 
 	private String id;
 	private String name;
 	private String department;
+	private int numGroups;
+	private List<String> preferences;
 
 	public Supervisor(String id, String name, String department) {
 		super();
@@ -13,8 +17,24 @@ public class Supervisor {
 		this.department = department;
 	}
 
+	public int getNumGroups() {
+		return numGroups;
+	}
+
+	public void setNumGroups(int numGroups) {
+		this.numGroups = numGroups;
+	}
+
 	public String getId() {
 		return id;
+	}
+
+	public List<String> getPreferences() {
+		return preferences;
+	}
+
+	public void setPreferences(List<String> preferences) {
+		this.preferences = preferences;
 	}
 
 	public void setId(String id) {

@@ -33,7 +33,7 @@
                 <li><a href=<%=role.equals("S") ? "studentHome.jsp" : "supervisorHome.jsp" %>>Home</a></li>
                 <li><a href=<%=role.equals("S") ? "studentSavedPreferences.jsp" : "supervisorSavedPreferences.jsp"%>>Saved Preferences</a></li>
                 <li><a href="groupChat.jsp" class="active">Chat Home</a></li>
-                <li><a href="logout.jsp">Logout</a></li>
+                <li><a href="#" data-toggle="modal" onclick="showLogoutModal()">Logout</a></li>
             </ul>
         </div>
 
@@ -52,9 +52,31 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Logout Modal -->
+<div class="modal fade" id="logoutModal" tabindex="-1" role="dialog" aria-labelledby="logoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logoutModalLabel">Confirm Logout</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to log out?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="logout()">Logout</button>
+            </div>
+        </div>
     </div>
-
+</div>
+    </div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js"></script>
     <script src="js/sidebar.js"></script>
+    <script src="js/modal.js"></script>
     <script>
     function fetchMessages() {
     	$.ajax({

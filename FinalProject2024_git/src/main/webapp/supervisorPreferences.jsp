@@ -1,21 +1,21 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ page import="java.util.List, java.util.ArrayList, model.Student, database.StudentsDAO, database.DepartmentDAO"%>
+<%@ page import="java.util.List, java.util.ArrayList, model.Supervisor, database.SupervisorsDAO, database.DepartmentDAO"%>
 <%
 DepartmentDAO dd = new DepartmentDAO();
 String name = session.getAttribute("Name").toString();
 List<String> departments = dd.getAllDepartmentsWithPreferences();
     String departmentFilter = request.getParameter("department");
-    List<Student> students = new ArrayList<>();
+    List<Supervisor> supervisors = new ArrayList<>();
     if (departmentFilter != null && !departmentFilter.isEmpty()) {
-        StudentsDAO sd = new StudentsDAO();
-        students = sd.getAllStudents(departmentFilter);
+        SupervisorsDAO sd = new SupervisorsDAO();
+        supervisors = sd.getAllSupervisors(departmentFilter);
     }
 %>
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Student Preferences</title>
+    <title>Supervisor Preferences</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
     <link rel="stylesheet" href="css/landing.css">
@@ -26,8 +26,8 @@ List<String> departments = dd.getAllDepartmentsWithPreferences();
     <div id="sidebar-wrapper">
         <ul class="sidebar-nav">
         <li><a href="adminHome.jsp">Home Page</a></li>
-            <li><a href="studentPreferences.jsp" class="active">Student Preferences</a></li>
-            <li><a href="supervisorPreferences.jsp">Supervisor Preferences</a></li>
+            <li><a href="studentPreferences.jsp">Student Preferences</a></li>
+            <li><a href="supervisorPreferences.jsp" class="active">Supervisor Preferences</a></li>
             <li><a href="runAlgorithm.jsp">Run Algorithm</a></li>
             <li><a href="formedGroups.jsp">Formed Groups</a></li>
             <li><a href="sendEmails.jsp">Send Email</a></li>
@@ -41,8 +41,8 @@ List<String> departments = dd.getAllDepartmentsWithPreferences();
             <a href="#" class="btn btn-secondary" id="menu-toggle"><i class="fas fa-bars"></i></a>
             <div class="row">
                 <div class="col-lg-12">
-                <h1>Student Preferences</h1>
-                <form action="studentPreferences.jsp" method="get" class="mb-4">
+                <h1>Supervisor Preferences</h1>
+                <form action="supervisorPreferences.jsp" method="get" class="mb-4">
                     <div class="form-group">
                         <label for="department">Filter by Department:</label>
         <select name="department" id="department" class="form-control">
@@ -57,30 +57,29 @@ List<String> departments = dd.getAllDepartmentsWithPreferences();
                     <button type="submit" class="btn btn-custom">Apply Filter</button>
                 </form>
                 <!-- Student table, displayed only if department filter is applied -->
-    <% if (departmentFilter != null && !departmentFilter.isEmpty() && !students.isEmpty()) { %>
+    <% if (departmentFilter != null && !departmentFilter.isEmpty() && !supervisors.isEmpty()) { %>
         <div class="table-container" style="display: block;">
             <table class="table table-bordered">
                 <thead class="thead-light">
                     <tr>
-                        <th>Student ID</th>
+                        <th>Supervisor ID</th>
                         <th>Name</th>
                         <th>Department</th>
-                        <th>Preference 1</th>
-                        <th>Preference 2</th>
-                        <th>Preference 3</th>
-                        <th>Preference 4</th>
+                        <th>Supervising Capacity</th>
+                        <th>Preferred Topics</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <% for (Student student : students) { %>
+                    <% for (Supervisor supervisor : supervisors) { %>
                     <tr>
-                        <td><%= student.getId() %></td>
-                        <td><%= student.getName() %></td>
-                        <td><%= student.getDepartment() %></td>
-                        <td><%= student.getPreferences().get(0) %></td>
-                        <td><%= student.getPreferences().get(1) %></td>
-                        <td><%= student.getPreferences().get(2) %></td>
-                        <td><%= student.getPreferences().get(3) %></td>
+                        <td><%= supervisor.getId() %></td>
+                        <td><%= supervisor.getName() %></td>
+                        <td><%= supervisor.getDepartment() %></td>
+                        <td><%= supervisor.getNumGroups() %></td>
+                        <td>
+                        <%for(String topic : supervisor.getPreferences()){ %>
+                        <li><%=topic %></li>
+                        <%} %></td>
                     </tr>
                     <% } %>
                 </tbody>
@@ -88,7 +87,7 @@ List<String> departments = dd.getAllDepartmentsWithPreferences();
         </div>
     <% } else if(departmentFilter == null || departmentFilter.isEmpty()){ %>
     <p id="message" style="color: red; display: block">Please select a department</p>
-    <%} else if(departmentFilter != null && !departmentFilter.isEmpty() && students.isEmpty()){ %>
+    <%} else if(departmentFilter != null && !departmentFilter.isEmpty() && supervisors.isEmpty()){ %>
     <p id="message" style="color: red; display: block">No records to display</p>
     <%} %>
 </div>
@@ -116,7 +115,6 @@ List<String> departments = dd.getAllDepartmentsWithPreferences();
         </div>
     </div>
 </div>
-    
     </div>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js"></script>

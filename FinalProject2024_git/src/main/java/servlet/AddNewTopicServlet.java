@@ -25,6 +25,7 @@ public class AddNewTopicServlet extends HttpServlet {
         HttpSession session = request.getSession();
         String topicName = request.getParameter("topicName");
         String department = session.getAttribute("department").toString();
+        String supervisorName = request.getParameter("supervisorName");
         PrintWriter out = response.getWriter();
 
         if (topicName == null || topicName.isEmpty()) {
@@ -34,7 +35,7 @@ public class AddNewTopicServlet extends HttpServlet {
 
         try (Connection conn = MySQLConnection.getConnection()) {
             if (!topicExists(conn, topicName, department)) {
-                addNewTopic(conn, topicName, department);
+                addNewTopic(conn, topicName, department, supervisorName);
                 List<String> topics = fetchTopics(conn, department);
                 System.out.println(topics.toString());
                 String json = new Gson().toJson(topics);
@@ -74,12 +75,13 @@ public class AddNewTopicServlet extends HttpServlet {
         }
     }
 
-    private void addNewTopic(Connection conn, String topicName, String department) throws SQLException {
-        String insertQuery = "INSERT INTO topics (topic_name, is_available, department) VALUES (?, ?, ?)";
+    private void addNewTopic(Connection conn, String topicName, String department, String supervisorName) throws SQLException {
+        String insertQuery = "INSERT INTO topics (topic_name, is_available, department, created_by) VALUES (?, ?, ?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(insertQuery)) {
             pstmt.setString(1, topicName);
-            pstmt.setString(2, "P");
+            pstmt.setString(2, "S");
             pstmt.setString(3, department);
+            pstmt.setString(4, supervisorName);
             pstmt.executeUpdate();
         }
     }

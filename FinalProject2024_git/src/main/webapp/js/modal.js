@@ -33,3 +33,12 @@ document.addEventListener('DOMContentLoaded', function () {
         $('#confirmationModal').modal('hide'); // Hide the modal
     });
 });
+
+function showLogoutModal(){
+    $('#logoutModal').modal('show');
+    }
+
+function logout() {
+    location.href = 'logout.jsp'; // Redirect to the logout page
+}
+

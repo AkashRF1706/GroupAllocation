@@ -1,6 +1,5 @@
 package actions;
 
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -9,12 +8,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.servlet.annotation.WebServlet;
@@ -28,8 +24,6 @@ import org.jgrapht.graph.DefaultDirectedWeightedGraph;
 import org.jgrapht.graph.DefaultWeightedEdge;
 import org.json.JSONObject;
 
-import com.google.gson.*;
-
 import database.MySQLConnection;
 
 @WebServlet("/RunAlgorithm")
@@ -40,122 +34,7 @@ public class StudentAllocation extends HttpServlet{
 	 */
 	private static final long serialVersionUID = 1L;
 
-	private static Map<String, Integer> assignSupervisorsToTopics(Map<String, List<List<Integer>>> validGroups,
-			Map<Integer, List<String>> supervisorPreferences) {
-
-		Map<String, Integer> topicSupervisorAssignment = new HashMap<>();
-		supervisorPreferences.forEach((supervisorId, preferences) -> {
-			preferences.forEach(topic -> {
-				if (validGroups.containsKey(topic)) {
-					// Assign supervisor to the topic if not already assigned
-					topicSupervisorAssignment.putIfAbsent(topic, supervisorId);
-				}
-			});
-		});
-		return topicSupervisorAssignment;
-	}
-
-	// Count the number of students assigned to their respective preferences
-	private static Map<String, Integer> assignmentCount(List<String> topics,
-			Map<String, List<List<Integer>>> topicGroupCount, Map<Integer, List<String>> students) {
-		Map<String, Integer> scores = new HashMap<>();
-		scores.put("first", 0);
-		scores.put("second", 0);
-		scores.put("third", 0);
-		scores.put("fourth", 0);
-		scores.put("random", 0);
-		int total = 0;
-
-		for (String t : topics) {
-			if (!topicGroupCount.containsKey(t)) {
-				continue;
-			}
-			for (List<Integer> group : topicGroupCount.get(t)) {
-				for (int s : group) {
-					List<String> prefs = students.get(s);
-					if (t.equalsIgnoreCase(prefs.get(0))) {
-						scores.put("first", scores.get("first") + 1);
-					} else if (prefs.size() > 1 && t.equalsIgnoreCase(prefs.get(1))) {
-						scores.put("second", scores.get("second") + 1);
-					} else if (prefs.size() > 2 && t.equalsIgnoreCase(prefs.get(2))) {
-						scores.put("third", scores.get("third") + 1);
-					} else if (prefs.size() > 3 && t.equalsIgnoreCase(prefs.get(3))) {
-						scores.put("fourth", scores.get("fourth") + 1);
-					} else {
-						scores.put("random", scores.get("random") + 1);
-					}
-					total++;
-				}
-			}
-		}
-
-		return scores;
-	}
-
-	// Save the student assignment results to a CSV file
-	private static int resultFile(List<String> topics, Map<String, List<List<Integer>>> topicGroupCount) {
-		List<Map<String, Object>> resultData = new ArrayList<>();
-		int totalAssigned = 0;
-		for (String t : topics) {
-			if (!topicGroupCount.containsKey(t)) {
-				continue;
-			}
-			for (int i = 0; i < topicGroupCount.get(t).size(); i++) {
-				List<Integer> group = topicGroupCount.get(t).get(i);
-				totalAssigned += group.size();
-				for (int student : group) {
-					Map<String, Object> row = new HashMap<>();
-					row.put("topic", t);
-					row.put("group", i + 1);
-					row.put("student", student);
-					resultData.add(row);
-				}
-			}
-		}
-		// Write data to CSV file
-		try (FileWriter writer = new FileWriter("allocation.csv")) {
-			writer.append("topic,group,student\n");
-			for (Map<String, Object> row : resultData) {
-				writer.append(row.get("topic") + "," + row.get("group") + "," + row.get("student") + "\n");
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return totalAssigned;
-	}
-
-	// Log the results and parameters into a text file
-	private static void logFile(int totalAssigned, List<String> topics, int assignedTopics, int minGroupSize,
-			int maxGroupSize, int topicUseLimit, Map<String, Integer> assignedCounts, int total) {
-		try (FileWriter writer = new FileWriter("log_file.txt")) {
-			writer.write("All " + totalAssigned + " students were assigned successfully.\n");
-			writer.write("Assigned " + assignedTopics + " out of " + topics.size() + " topics.\n\n");
-			writer.write("Parameters:\n");
-			writer.write("Min group size: " + minGroupSize + "\n");
-			writer.write("Max group size: " + maxGroupSize + "\n");
-			writer.write("Topic use limit: " + topicUseLimit + "\n\n");
-			writer.write("Assignment Summary:\n");
-			writer.write("Total assigned with preferences: " + total + "\n");
-			writer.write("Total assigned at random: " + assignedCounts.get("random") + "\n\n");
-			writer.write("Score Function:\n");
-			writer.write("  1st preference: " + assignedCounts.get("first") + "\n");
-			writer.write("  2nd preference: " + assignedCounts.get("second") + "\n");
-			writer.write("  3rd preference: " + assignedCounts.get("third") + "\n");
-			writer.write("  4th preference: " + assignedCounts.get("fourth") + "\n");
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	private static int sumGroupSizes(List<List<Integer>> groups) {
-		int sum = 0;
-		for (List<Integer> group : groups) {
-			sum += group.size();
-		}
-		return sum;
-	}
-
-	protected void doPost(HttpServletRequest req, HttpServletResponse res) throws IOException {
+	protected synchronized void doPost(HttpServletRequest req, HttpServletResponse res) throws IOException {
 		
 		res.setContentType("application/json");
         res.setCharacterEncoding("UTF-8");
@@ -247,6 +126,9 @@ public class StudentAllocation extends HttpServlet{
         	jsonResponse.put("status", "success");
         	jsonResponse.put("message", "Student could not be allocated optimally. Please modify the student preferences.");
         	jsonResponse.put("redirectUrl", "sendEmails.jsp?department=" + department + "&studentIds=" + unallocatedStudents.toString().replaceAll("[\\[\\] ]", ""));
+        	out.print(jsonResponse.toString());
+    		out.flush();
+    		out.close();
         }
         
         // Supervisors allocating algorithm

@@ -84,4 +84,23 @@ public class GroupsDAO {
 		}
     	return emailList;
     }
+    
+    public List<String> getAllStudentsForGroup (String groupId){
+    	List<String> studentsList = new ArrayList<String>();
+    	
+    	try {
+    		String sql = "Select student_name from students where group_id = ?";
+    		PreparedStatement ptst = connection.prepareStatement(sql);
+    		ptst.setString(1, groupId);
+    		ResultSet rs = ptst.executeQuery();
+    		while(rs.next()) {
+    			String studentName = rs.getString("student_name");
+    			studentsList.add(studentName);
+    		}
+    	} catch (Exception e) {
+			// TODO: handle exception
+    		e.printStackTrace();
+		}
+    	return studentsList;
+    }
 }

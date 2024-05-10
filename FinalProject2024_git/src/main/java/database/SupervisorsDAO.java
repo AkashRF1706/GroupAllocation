@@ -5,17 +5,16 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import model.Student;
+import model.Supervisor;
 
-public class StudentsDAO {
+public class SupervisorsDAO {
 
-	public List<Student> getAllStudents(String department) {
-	    List<Student> studentsList = new ArrayList<>();
+	public List<Supervisor> getAllSupervisors(String department) {
+	    List<Supervisor> supervisorsList = new ArrayList<>();
 	    Map<String, String> topicIdToNameMap = new HashMap<>();
 
 	    try {
@@ -29,21 +28,22 @@ public class StudentsDAO {
 	            topicIdToNameMap.put(topicsRs.getString("topic_id"), topicsRs.getString("topic_name"));
 	        }
 
-	        // Fetching all students and their preferences
-	        String query = "SELECT s.student_name, s.username, s.department, p.preferences "
-	                + " FROM students s "
-	                + " JOIN preferences p ON s.student_id = p.student_id "
-	                + " WHERE s.department = ? AND s.student_id != 3 "
-	                + " ORDER BY s.student_id";
+	        // Fetching all supervisors and their preferences
+	        String query = "SELECT s.staff_name, s.username, s.department, sp.numgroups, sp.topics "
+	                + " FROM staff s "
+	                + " JOIN supervisor_prefs sp ON s.staff_id = sp.staff_id "
+	                + " WHERE s.department = ? AND s.staff_id != 1 "
+	                + " ORDER BY s.staff_id";
 	        PreparedStatement ptst = conn.prepareStatement(query);
 	        ptst.setString(1, department);
 	        ResultSet rs = ptst.executeQuery();
 
 	        while(rs.next()) {
 	            String userName = rs.getString("username");
-	            String studentName = rs.getString("student_name");
-	            String studentDepartment = rs.getString("department");
-	            String preferences = rs.getString("preferences");
+	            String staffName = rs.getString("staff_name");
+	            String staffDepartment = rs.getString("department");
+	            int numGroups = rs.getInt("numgroups");
+	            String preferences = rs.getString("topics");
 
 	            // Split the preferences string into an array
 	            String[] preferenceIds = preferences.split(",");
@@ -58,15 +58,16 @@ public class StudentsDAO {
 	                }
 	            }
 
-	            // Create a new Student object and set preferences
-	            Student student = new Student(userName, studentName, studentDepartment);
-	            student.setPreferences(preferenceNames);
-	            studentsList.add(student);
+	            // Create a new Supervisor object and set preferences
+	            Supervisor supervisor = new Supervisor(userName, staffName, staffDepartment);
+	            supervisor.setNumGroups(numGroups);
+	            supervisor.setPreferences(preferenceNames);
+	            supervisorsList.add(supervisor);
 	        }
 	    } catch (SQLException e) {
 	        e.printStackTrace();
 	    }
-	    return studentsList;
+	    return supervisorsList;
 	}
 
 }
