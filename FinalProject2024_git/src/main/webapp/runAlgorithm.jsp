@@ -1,3 +1,4 @@
+<%@page import="database.SupervisorsDAO"%>
 <%@page import="org.apache.catalina.startup.Catalina"%>
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="java.util.List, java.util.ArrayList, model.Student, model.Supervisor, java.sql.Connection, java.sql.PreparedStatement, java.sql.ResultSet, database.MySQLConnection, database.StudentsDAO, database.DepartmentDAO"%>
@@ -13,19 +14,11 @@ int numStudents = 0;
 int numSupervisors = 0;
 if (departmentFilter != null && !departmentFilter.isEmpty()) {
     StudentsDAO sd = new StudentsDAO();
+    SupervisorsDAO spd = new SupervisorsDAO();
     students = sd.getAllStudents(departmentFilter);
     numStudents = students.size();
-
-    try (Connection conn = MySQLConnection.getConnection()) {
-    PreparedStatement stmt = conn.prepareStatement("SELECT COUNT(*) AS count FROM staff where staff_id !=1 and role = 'staff' and is_supervisor = 'Y' and department =?");
-    stmt.setString(1, departmentFilter);
-    ResultSet rs = stmt.executeQuery();
-    if (rs.next()) {
-    	numSupervisors = rs.getInt("count");
-    }
-    } catch(Exception e){
-    	e.printStackTrace();
-    }
+    supervisors = spd.getAllSupervisors(departmentFilter);
+    numSupervisors = supervisors.size();
     }
 %>
 <!DOCTYPE html>
@@ -103,6 +96,8 @@ if(request.getParameter("success") != null){
     <p id="message" style="color: red; display: block">Please select a department</p>
     <%} else if(departmentFilter != null && !departmentFilter.isEmpty() && (students.isEmpty() || supervisors.isEmpty())){ %>
     <p id="message" style="color: red; display: block">No records to display</p>
+    <%} else if(numStudents <= 4){%>
+    <p id="message" style="color: red; display: block">Students less than minimum size</p>
     <%} %>
 </div>
             </div>
