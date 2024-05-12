@@ -29,12 +29,12 @@ public class LoginAction extends HttpServlet {
         try {
         	Connection conn = MySQLConnection.getConnection();
         	
-        	String query = "SELECT l.role, l.password, l.status, x.department, x.name, x.id, x.group_id "
+        	String query = "SELECT l.role, l.password, l.status, x.department, x.name, x.id, x.group_id, x.is_group_allocated "
         			+ " FROM finalproject.login l "
         			+ " JOIN ( "
-        			+ " SELECT 'student' AS role, student_name as name, student_id as id, username, department, group_id FROM finalproject.students "
+        			+ " SELECT 'student' AS role, student_name as name, student_id as id, username, department, group_id, is_group_allocated FROM finalproject.students "
         			+ " UNION ALL\r\n"
-        			+ " SELECT 'staff' AS role, staff_name as name, staff_id as id, username, department, group_id FROM finalproject.staff "
+        			+ " SELECT 'staff' AS role, staff_name as name, staff_id as id, username, department, group_id, is_group_allocated FROM finalproject.staff "
         			+ " ) x ON l.username = x.username "
         			+ " WHERE l.username = ? ";
         	
@@ -51,6 +51,7 @@ public class LoginAction extends HttpServlet {
         		String name = rs.getString("name");
         		String groupId = rs.getString("group_id");
         		int id = rs.getInt("id");
+        		String isGroupAllocated = rs.getString("is_group_allocated");
         		
         		if(status.equalsIgnoreCase("Active")) {
         			//Checking user entered password with the hashed password in DB
@@ -63,6 +64,7 @@ public class LoginAction extends HttpServlet {
 	        			session.setAttribute("id", id);
 	        			session.setAttribute("groupId", groupId);
 	        			session.setAttribute("role", role);
+	        			session.setAttribute("isGroupAllocated", isGroupAllocated);
 	                    
 	        			if(role.equalsIgnoreCase("S")) {
 	        				//Student

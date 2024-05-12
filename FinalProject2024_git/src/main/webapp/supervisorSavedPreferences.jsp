@@ -19,8 +19,14 @@
 <body>
 <%
 String groupId = null;
+String isGroupAllocated = null;
+String[] groupIdArray = null;
 if(session.getAttribute("groupId") != null){
 	groupId = session.getAttribute("groupId").toString();
+	groupIdArray = groupId.split(",");
+}
+if(session.getAttribute("isGroupAllocated") != null){
+	isGroupAllocated = session.getAttribute("isGroupAllocated").toString();
 }
 if (request.getParameter("saved") != null) {
     out.println("<script>alert('Preferences saved successfully');</script>");  
@@ -32,7 +38,7 @@ if (request.getParameter("saved") != null) {
         <ul class="sidebar-nav">
             <li><a href="supervisorHome.jsp">Home</a></li>
             <li><a href="supervisorSavedPreferences.jsp" class="active">Saved Preferences</a></li>
-            <%if(groupId != null){ %>
+            <%if(isGroupAllocated != null){ %>
         <li><a href="groupChat.jsp">Chat Home</a></li>
         <%} %>
             <li><a href="#" data-toggle="modal" onclick="showLogoutModal()">Logout</a></li>
@@ -62,15 +68,19 @@ String username = session.getAttribute("username").toString();
         }
         
         String topicId = null;
+        Map<String, List<String>> studentsMap = new HashMap<String, List<String>>();
         List<String> studentsList = new ArrayList<String>();
-        if(groupId != null){
-        	studentsList = new GroupsDAO().getAllStudentsForGroup(groupId);
+        if(groupId != null && isGroupAllocated != null){
+        	for(String group : groupIdArray){
+        	studentsList = new GroupsDAO().getAllStudentsForGroup(group);
+        	System.out.println(studentsList);
         	
-        	String[] groupIdSplit = groupId.split("-");
+        	String[] groupIdSplit = group.split("-");
         	if(groupIdSplit.length > 1){
         		topicId = groupIdSplit[0].substring(1);
+        		studentsMap.put(group, studentsList);
+        		System.out.println(studentsMap.toString());
         	}
-        }
         
         StringBuilder sql = new StringBuilder("SELECT topic_id, topic_name FROM topics WHERE topic_id IN (");
         for (int i = 0; i < topicsList.size(); i++) {
@@ -91,6 +101,8 @@ String username = session.getAttribute("username").toString();
                 topicNames.put(rs2.getInt("topic_id"), rs2.getString("topic_name"));
             }
         } 
+        	}
+        }
 %>
                         <table class="table">
                 <thead>
@@ -114,12 +126,19 @@ String username = session.getAttribute("username").toString();
                             <% } %>
                             </ul>
                         </td>
-                        <%if(topicId != null){ %>
-                        <td><%=groupId %> - <%=topicNames.get(Integer.parseInt(topicId)) %></td>
-                        <%} if(studentsList != null && !studentsList.isEmpty()){ %>
+                        <%if(topicId != null && groupIdArray != null){ %>
+                        	<td><%
+                        for(String gid : groupIdArray){
+                        String[] gidParts = gid.split("-");
+                        if (gidParts.length > 0) {
+        String gidTopicId = gidParts[0].replace("t", ""); // Remove 't' and get the number only
+        %>
+                        
+                        <li><%=gid %> - <%=topicNames.get(Integer.parseInt(gidTopicId)) %></li>
+                        <%}}%></td><%} if(studentsMap != null && !studentsMap.isEmpty()){ %>
                         	<td>
-                       <% for(String student : studentsList){%>
-                        	<li><%=student %></li>
+                       <% for(Map.Entry<String, List<String>> mapEntry : studentsMap.entrySet()){%>
+                        	<li><%=mapEntry.getValue() %></li>
                         <%}%></td> <%}%>
                     </tr>
                 </tbody>

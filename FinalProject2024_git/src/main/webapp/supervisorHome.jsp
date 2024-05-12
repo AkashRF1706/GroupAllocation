@@ -30,8 +30,12 @@
     String department = session.getAttribute("department").toString();
     String name = session.getAttribute("Name").toString();
     String groupId = null;
+    String isGroupAllocated = null;
     if(session.getAttribute("groupId") != null){
     	groupId = session.getAttribute("groupId").toString();
+    }
+    if(session.getAttribute("isGroupAllocated") != null){
+    	isGroupAllocated = session.getAttribute("isGroupAllocated").toString();
     }
     LocalDateTime supervisorDeadline = null;
     LocalDateTime now = LocalDateTime.now();
@@ -70,7 +74,7 @@
         <ul class="sidebar-nav">
             <li><a href="supervisorHome.jsp" class="active">Home</a></li>
             <li><a href="supervisorSavedPreferences.jsp">Saved Preferences</a></li>
-            <%if(groupId != null){ %>
+            <%if(isGroupAllocated != null){ %>
         <li><a href="groupChat.jsp">Chat Home</a></li>
         <%} %>
             <li><a href="#" data-toggle="modal" onclick="showLogoutModal()">Logout</a></li>

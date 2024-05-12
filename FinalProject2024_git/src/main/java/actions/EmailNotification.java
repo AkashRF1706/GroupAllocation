@@ -1,8 +1,11 @@
 package actions;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
@@ -17,6 +20,10 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import com.mysql.cj.MysqlConnection;
+
+import database.MySQLConnection;
 
 @WebServlet("/releaseResults")
 public class EmailNotification extends HttpServlet{
@@ -89,12 +96,36 @@ public class EmailNotification extends HttpServlet{
 
 	protected synchronized void doPost(HttpServletRequest req, HttpServletResponse res) throws IOException {
 		String[] emails = req.getParameterValues("emails");
+		 String updateStudents = "UPDATE students SET is_group_allocated = 'Y' WHERE email IN (";
+		 String updateStaff = "UPDATE staff SET is_group_allocated = 'Y' WHERE email IN (";
+		 
+		 String placeholders = String.join(", ", Collections.nCopies(emails.length, "?"));
+		    updateStudents += placeholders + ")";
+		    updateStaff += placeholders + ")";
 		
 		List<String> allEmails = new ArrayList<>(Arrays.asList(emails));
 		try {
-			sendEmailToRecipients(allEmails, "Group Allocations Released", "Hi,\n\n This is to notify you about your group allocation results have been released.\n\nBest Regards,\nMSc. Project Testing");
-			res.sendRedirect("formedGroups.jsp?success");
-		} catch (MessagingException e) {
+			Connection conn = MySQLConnection.getConnection();
+			PreparedStatement stmtStudents = conn.prepareStatement(updateStudents);
+	         PreparedStatement stmtStaff = conn.prepareStatement(updateStaff);
+	         
+	         for (int i = 0; i < emails.length; i++) {
+	             stmtStudents.setString(i + 1, emails[i]);
+	         }
+	         int studentUpdateCount = stmtStudents.executeUpdate();
+	         for (int i = 0; i < emails.length; i++) {
+	             stmtStaff.setString(i + 1, emails[i]);
+	         }
+	         
+	         int staffUpdateCount = stmtStaff.executeUpdate();
+	         if(studentUpdateCount > 0 && staffUpdateCount > 0) {
+	        	 sendEmailToRecipients(allEmails, "Group Allocations Released", "Hi,\n\n This is to notify you about your group allocation results have been released.\n\nBest Regards,\nMSc. Project Testing");
+	        	 res.sendRedirect("formedGroups.jsp?success");
+	         } else {
+	        	 res.sendRedirect("formedGroups.jsp?failure");
+			}
+			
+		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			res.sendRedirect("formedGroups.jsp?failure");
 			e.printStackTrace();

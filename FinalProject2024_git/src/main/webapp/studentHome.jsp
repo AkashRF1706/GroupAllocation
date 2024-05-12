@@ -80,8 +80,12 @@ java.util.ArrayList, database.MySQLConnection, java.util.HashMap, java.util.Map,
     String name = session.getAttribute("Name").toString();
     String department = session.getAttribute("department").toString();
     String groupId = null;
+    		String isGroupAllocated = null;
     if(session.getAttribute("groupId") != null){
     	groupId = session.getAttribute("groupId").toString();	
+    }
+    if(session.getAttribute("isGroupAllocated") != null){
+    	isGroupAllocated = session.getAttribute("isGroupAllocated").toString();	
     }
     LocalDateTime studentDeadline = null;
     LocalDateTime now = LocalDateTime.now();
@@ -117,7 +121,7 @@ java.util.ArrayList, database.MySQLConnection, java.util.HashMap, java.util.Map,
     <ul class="sidebar-nav">
         <li><a href="studentHome.jsp" class="active">Home</a></li>
         <li><a href="studentSavedPreferences.jsp">Saved Preferences</a></li>
-        <%if(groupId != null){ %>
+        <%if(isGroupAllocated != null){ %>
         <li><a href="groupChat.jsp">Chat Home</a></li>
         <%} %>
         <li><a href="#" data-toggle="modal" onclick="showLogoutModal()">Logout</a></li>

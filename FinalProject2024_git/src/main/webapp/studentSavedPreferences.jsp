@@ -47,8 +47,12 @@ th {
 </head>
 <body>
 <%String group_id = null;
+String isGroupAllocated = null;
 if(session.getAttribute("groupId")  != null){
 	group_id = session.getAttribute("groupId").toString();
+}
+if(session.getAttribute("isGroupAllocated")  != null){
+	isGroupAllocated = session.getAttribute("isGroupAllocated").toString();
 }
 
 %>
@@ -64,7 +68,7 @@ if(session.getAttribute("groupId")  != null){
 				<li><a href="studentHome.jsp">Home</a></li>
 				<li><a href="studentSavedPreferences.jsp" class="active"%>Saved
 						Preferences</a></li>
-						<%if(group_id != null){ %>
+						<%if(isGroupAllocated != null){ %>
 				<li><a href="groupChat.jsp">Chat Home</a></li>
 				<%} %>
 				<li><a href="#" data-toggle="modal" onclick="showLogoutModal()">Logout</a></li>
@@ -89,8 +93,8 @@ if(session.getAttribute("groupId")  != null){
                     
                     String topicId = null;
                     String supervisorName = "";
-                    if(group_id != null){
-                    	PreparedStatement ptst = conn.prepareStatement("Select staff_name from staff where group_id = ?");
+                    if(group_id != null && isGroupAllocated != null){
+                    	PreparedStatement ptst = conn.prepareStatement("Select staff_name from staff where FIND_IN_SET(?, group_id) > 0");
                     	ptst.setString(1, group_id);
                     	ResultSet rst = ptst.executeQuery();
                     	if(rst.next()){

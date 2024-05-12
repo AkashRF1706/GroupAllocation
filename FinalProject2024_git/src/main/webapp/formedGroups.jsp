@@ -1,6 +1,9 @@
+<%@page import="database.SupervisorsDAO"%>
+<%@page import="database.StudentsDAO"%>
+<%@page import="model.Student"%>
 <%@page import="java.util.ArrayList"%>
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ page import="java.util.List, model.Group, database.GroupsDAO, database.DepartmentDAO"%>
+<%@ page import="java.util.List, model.*, database.GroupsDAO, database.DepartmentDAO"%>
 <!DOCTYPE html>
 <html>
 <head>
@@ -37,10 +40,16 @@ String selectedDepartment = request.getParameter("department");
 String name = session.getAttribute("Name").toString();
     List<Group> groups = new ArrayList<Group>();
     List<String> emails = new ArrayList<String>();
+    List<Student> students = new ArrayList<Student>();
+    List<Supervisor> supervisors = new ArrayList<Supervisor>();
     if(selectedDepartment != null && !selectedDepartment.isEmpty()){
     	GroupsDAO gd = new GroupsDAO();
     	groups = gd.getAllGroups(selectedDepartment);
     	emails = gd.getStudentAndSupervisorEmails(selectedDepartment);
+    	StudentsDAO sd = new StudentsDAO();
+    	SupervisorsDAO spd = new SupervisorsDAO();
+    	students = sd.getAllStudents(selectedDepartment);
+    	supervisors = spd.getAllSupervisors(selectedDepartment);
     }
     
 %>
@@ -102,9 +111,54 @@ String name = session.getAttribute("Name").toString();
         <% for (String email : emails) { %>
             <input type="hidden" name="emails" value="<%= email %>">
         <% } %>
-        <button type="submit" class="btn btn-success">Release Results and Notify</button>
-    </div>
-</form>
+        <button type="submit" id="releaseResultsBtn" class="btn btn-success">Release Results and Notify</button>
+        </div>
+        </form>
+        <br>
+        <div class="text-center">
+         <button id="manualStudentAllocationBtn" class="btn btn-info">Manually Allocate Student</button>
+<button id="manualSupervisorAllocationBtn" class="btn btn-info">Manually Allocate Supervisor/Second Marker</button>
+   </div>     
+   <br>
+        <!-- Student Allocation Dropdowns -->
+<div id="studentDropdown" style="display:none;">
+    <select class="form-control" id="studentSelect">
+        <%
+        for(Student student : students) { %>
+            <option value="<%= student.getId() %>"><%= student.getName() %></option>
+        <% } %>
+    </select><br>
+    <select class="form-control" id="studentGroupSelect">
+        <% // Loop through groups
+        for(Group group : groups) { %>
+            <option value="<%= group.getGroupName() %>"><%= group.getGroupName() %></option>
+        <% } %>
+    </select><br>
+    <button class="btn btn-primary allocationSubmit" data-action="studentAllocateServlet" data-select="student">Update</button> &nbsp
+    <button id="cancelButton" type="button" class="btn btn-primary" onclick="cancelButton()">Cancel</button>
+</div>
+
+<!-- Supervisor Allocation Dropdowns -->
+<div id="supervisorDropdown" style="display:none;">
+    <select class="form-control" id="supervisorSelect">
+        <%
+        for(Supervisor supervisor : supervisors) { %>
+            <option value="<%= supervisor.getId() %>"><%= supervisor.getName() %></option>
+        <% } %>
+    </select><br>
+    <select class="form-control" id="supervisorGroupSelect">
+        <% // Loop through groups
+        for(Group group : groups) { %>
+            <option value="<%= group.getGroupName() %>"><%= group.getGroupName() %></option>
+        <% } %>
+    </select><br>
+    <select class="form-control" id="supervisorSecondMarkerSelect">
+    <option value="Supervisor">Supervisor</option>
+    <option value="Second Marker">Second Marker</option>
+    </select><br>
+    <button class="btn btn-primary allocationSubmit" data-action="supervisorAllocateServlet" data-select="supervisor">Update</button> &nbsp
+    <button id="cancelButton" type="button" class="btn btn-primary" onclick="cancelButton()">Cancel</button>
+</div>
 <br>
                 
                 <%} else if(selectedDepartment == null || selectedDepartment.isEmpty()){%>
@@ -143,5 +197,61 @@ String name = session.getAttribute("Name").toString();
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js"></script>
 <script src="js/sidebar.js"></script>
 <script src="js/modal.js"></script>
+<script>
+$(document).ready(function() {
+    // Toggle buttons and dropdown visibility
+    function toggleAllocationOptions(disable) {
+        $('#manualStudentAllocationBtn, #manualSupervisorAllocationBtn, #releaseResultsBtn').prop('disabled', disable);
+        if (!disable) {
+            $('#studentDropdown, #supervisorDropdown').hide();
+        }
+    }
+
+    $('#manualStudentAllocationBtn').click(function() {
+        toggleAllocationOptions(true);
+        $('#studentDropdown').show();
+        $('#supervisorDropdown').hide();
+    });
+
+    $('#manualSupervisorAllocationBtn').click(function() {
+        toggleAllocationOptions(true);
+        $('#supervisorDropdown').show();
+        $('#studentDropdown').hide();
+    });
+
+    // Function to handle form submissions for allocations
+    $('.allocationSubmit').click(function(e) {
+        e.preventDefault();
+        var actionUrl = $(this).data('action');
+        var userType = $(this).data('select');
+        var userId = $('#' + userType + 'Select').val();
+        var groupId = $('#' + userType + 'GroupSelect').val();
+        var supervisorSecondMarker = $('#' + userType + 'SecondMarkerSelect').val();
+
+        $.ajax({
+            url: actionUrl,
+            type: 'POST',
+            data: { userId: userId, groupId: groupId, supervisorSecondMarker: supervisorSecondMarker },
+            success: function(response) {
+                alert('Allocation successful.');
+                toggleAllocationOptions(false);
+                location.reload();
+            },
+            error: function() {
+                alert('Error in allocation. Please try again.');
+                toggleAllocationOptions(false);
+            }
+        });
+    });
+
+    // Hide dropdowns initially
+    $('#studentDropdown, #supervisorDropdown').hide();
+});
+
+function cancelButton() {
+    location.reload();
+}
+</script>
+
 </body>
 </html>

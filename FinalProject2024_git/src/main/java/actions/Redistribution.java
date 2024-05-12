@@ -100,7 +100,7 @@ public class Redistribution {
 			for (int student : underfilledStudents) {
 				if(attemptComplexRedistribution(student, topicGroupCount, students, minGroupSize, maxGroupSize, topicUseLimit)) {
 					//Break after redistributed
-					break;
+					continue;
 				}
 			}
 		}
@@ -180,7 +180,7 @@ public class Redistribution {
 
 			for (int i = 0; i < groups.size(); i++) {
 				List<Integer> group = groups.get(i);
-				if(unallocatedStudentPrefs.contains(topic) && group.size() < maxGroupSize && (group.size() + 1) >= minGroupSize) {
+				if(unallocatedStudentPrefs.contains(topic) && group.size() < maxGroupSize && (group.size() + 1) >= minGroupSize && !group.contains(unallocatedStudentId)) {
 					group.add(unallocatedStudentId);
 					removeStudentFromAllGroups(unallocatedStudentId, topicGroupCount, topic, i);
 					reallocated = true;
@@ -199,7 +199,7 @@ public class Redistribution {
 						for (String pref : students.get(studentId)) {
 							if (unallocatedStudentPrefs.contains(pref) && pref.equals(topic)) {
 								// Try to reallocate the unallocated student to this group
-								if (group.size() < maxGroupSize) {
+								if (group.size() < maxGroupSize && !group.contains(unallocatedStudentId)) {
 									group.add(unallocatedStudentId);
 									reallocated = true;
 									removeStudentFromAllGroups(unallocatedStudentId, topicGroupCount, topic, i);
@@ -213,7 +213,7 @@ public class Redistribution {
 											group.add(unallocatedStudentId);
 											reallocated = true;
 											removeStudentFromAllGroups(unallocatedStudentId, topicGroupCount, topic, i);
-											break;
+											break outerloop;
 										}
 									}
 								}

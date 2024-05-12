@@ -125,7 +125,7 @@ public class StudentAllocation extends HttpServlet{
         List<Integer> unallocatedStudents = new ArrayList<Integer>();
         unallocatedStudents = getUnallocatedStudents(topicGroupCount, minGroupSize);
         
-        if(unallocatedStudents == null || unallocatedStudents.isEmpty()) {
+        if(!unallocatedStudents.isEmpty()) {
         	jsonResponse.put("status", "success");
         	jsonResponse.put("message", "Student could not be allocated optimally. Please modify the student preferences.");
         	jsonResponse.put("redirectUrl", "sendEmails.jsp?department=" + department + "&studentIds=" + unallocatedStudents.toString().replaceAll("[\\[\\] ]", ""));
@@ -335,57 +335,84 @@ System.out.println("Setup complete, running flow algorithm...");
         // SQL to clear group_id before inserting new ones
         String clearStudentsGroupSQL = "UPDATE students SET group_id = NULL WHERE department = ? and group_id is not null";
         String clearStaffGroupSQL = "UPDATE staff SET group_id = NULL WHERE department = ? and group_id is not null";
+        String clearGroupAllocatedStudents = "UPDATE students SET is_group_allocated = null where department = ?";
+        String clearGroupAllocatedStaff = "UPDATE staff SET is_group_allocated = null where department = ?";
 
         String insertSQL = "INSERT INTO discussiongroups (group_name, students, supervisor_id, topic_id, second_marker) VALUES (?, ?, ?, ?, ?)";
         String updateStudentsSQL = "UPDATE students SET group_id = ? WHERE student_id = ?";
-        String updateStaffSQL = "UPDATE staff SET group_id = ? WHERE staff_id = ?";
+        String fetchStaffGroupIdsSQL = "SELECT group_id FROM staff WHERE staff_id = ?";
+        String updateStaffGroupIdsSQL = "UPDATE staff SET group_id = ? WHERE staff_id = ?";
 
-        try (
-            PreparedStatement clearStudentsStmt = connection.prepareStatement(clearStudentsGroupSQL);
-            PreparedStatement clearStaffStmt = connection.prepareStatement(clearStaffGroupSQL);
-            PreparedStatement preparedStatement = connection.prepareStatement(insertSQL);
-            PreparedStatement updateStudentsStmt = connection.prepareStatement(updateStudentsSQL);
-            PreparedStatement updateStaffStmt = connection.prepareStatement(updateStaffSQL);
-        ) {
+        try {
+            connection = MySQLConnection.getConnection();
             connection.setAutoCommit(false);  // Start transaction
-            
-         // Clear group_ids for students and staff
-            clearStudentsStmt.setString(1, department);
-            clearStudentsStmt.executeUpdate();
-            
-            clearStaffStmt.setString(1, department);
-            clearStaffStmt.executeUpdate();
 
-            for (Map.Entry<String, List<Object>> entry : groupDetails.entrySet()) {
-                String groupId = entry.getKey();
-                List<Integer> studentsList = (List<Integer>) entry.getValue().get(0);
-                String students = studentsList.stream().map(Object::toString).collect(Collectors.joining(","));
-                String supervisorId = entry.getValue().get(1).toString();
-                String secondMarkerId = entry.getValue().get(2).toString();
+            try (PreparedStatement clearStudentsStmt = connection.prepareStatement(clearStudentsGroupSQL);
+                 PreparedStatement clearStaffStmt = connection.prepareStatement(clearStaffGroupSQL);
+                 PreparedStatement clearGroupAllocatedStudentsStmt = connection.prepareStatement(clearGroupAllocatedStudents);
+                 PreparedStatement clearGroupAllocatedStaffStmt = connection.prepareStatement(clearGroupAllocatedStaff);
+                 PreparedStatement preparedStatement = connection.prepareStatement(insertSQL);
+                 PreparedStatement updateStudentsStmt = connection.prepareStatement(updateStudentsSQL);
+                 PreparedStatement fetchStaffGroupStmt = connection.prepareStatement(fetchStaffGroupIdsSQL);
+                 PreparedStatement updateStaffGroupIdsStmt = connection.prepareStatement(updateStaffGroupIdsSQL);) {
+
+                // Clear existing group_ids and allocation flags
+                clearStudentsStmt.setString(1, department);
+                clearStudentsStmt.executeUpdate();
                 
-                String[] parts = groupId.split("-");
-                String topicId = parts[0].substring(1);  // Remove 't' and taking the number
+                clearStaffStmt.setString(1, department);
+                clearStaffStmt.executeUpdate();
 
-                // Insert into discussiongroups
-                preparedStatement.setString(1, groupId);
-                preparedStatement.setString(2, students);
-                preparedStatement.setInt(3, Integer.parseInt(supervisorId));
-                preparedStatement.setInt(4, Integer.parseInt(topicId));
-                preparedStatement.setInt(5, Integer.parseInt(secondMarkerId));
-                preparedStatement.executeUpdate();
+                clearGroupAllocatedStudentsStmt.setString(1, department);
+                clearGroupAllocatedStaffStmt.setString(1, department);
+                clearGroupAllocatedStudentsStmt.executeUpdate();
+                clearGroupAllocatedStaffStmt.executeUpdate();
 
-                // Update students with groupId
-                for (Integer studentId : studentsList) {
-                    updateStudentsStmt.setString(1, groupId);
-                    updateStudentsStmt.setInt(2, studentId);
-                    updateStudentsStmt.executeUpdate();
+                for (Map.Entry<String, List<Object>> entry : groupDetails.entrySet()) {
+                    String groupId = entry.getKey();
+                    List<Integer> studentsList = (List<Integer>) entry.getValue().get(0);
+                    String students = studentsList.stream().map(Object::toString).collect(Collectors.joining(","));
+                    String supervisorId = entry.getValue().get(1).toString();
+                    String secondMarkerId = entry.getValue().get(2).toString();
+                    
+                    String[] parts = groupId.split("-");
+                    String topicId = parts[0].substring(1);  // Assume 't' prefix is to be removed
+
+                    // Insert into discussiongroups
+                    preparedStatement.setString(1, groupId);
+                    preparedStatement.setString(2, students);
+                    preparedStatement.setInt(3, Integer.parseInt(supervisorId));
+                    preparedStatement.setInt(4, Integer.parseInt(topicId));
+                    preparedStatement.setInt(5, Integer.parseInt(secondMarkerId));
+                    preparedStatement.executeUpdate();
+
+                    // Update students with groupId
+                    for (Integer studentId : studentsList) {
+                        updateStudentsStmt.setString(1, groupId);
+                        updateStudentsStmt.setInt(2, studentId);
+                        updateStudentsStmt.executeUpdate();
+
+                    }
+
+                    // Update staff with new groupId
+                    fetchStaffGroupStmt.setInt(1, Integer.parseInt(supervisorId));
+                    ResultSet rs = fetchStaffGroupStmt.executeQuery();
+                    String existingGroupIds = rs.next() ? rs.getString("group_id") : "";
+
+                    String newGroupIds = existingGroupIds;
+                    if (existingGroupIds == null || existingGroupIds.isEmpty()) {
+                        newGroupIds = groupId;
+                    } else {
+                        List<String> existingList = Arrays.asList(existingGroupIds.split(","));
+                        if (!existingList.contains(groupId)) {
+                            newGroupIds = existingGroupIds + "," + groupId;
+                        }
+                    }
+
+                    updateStaffGroupIdsStmt.setString(1, newGroupIds);
+                    updateStaffGroupIdsStmt.setInt(2, Integer.parseInt(supervisorId));
+                    updateStaffGroupIdsStmt.executeUpdate();
                 }
-
-                // Update staff with groupId
-                updateStaffStmt.setString(1, groupId);
-                updateStaffStmt.setInt(2, Integer.parseInt(supervisorId));
-                updateStaffStmt.executeUpdate();
-            }
 
             connection.commit(); // Commit the transaction
         } catch (SQLException e) {
@@ -395,13 +422,11 @@ System.out.println("Setup complete, running flow algorithm...");
                 ex.printStackTrace();
             }
             e.printStackTrace();
-        } finally {
-            try {
-                connection.setAutoCommit(true); // Reset auto-commit to true
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
+        } 
+    } catch (Exception e) {
+    	e.printStackTrace();
+		// TODO: handle exception
+	}
     }
     
    private static List<Integer> getUnallocatedStudents(Map<String, Object[]> topicGroupCount, int minGroupSize){
