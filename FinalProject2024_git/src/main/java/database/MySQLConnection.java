@@ -2,13 +2,15 @@ package database;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class MySQLConnection {
 
-	private static final String URL = "jdbc:mysql://finalproject-test.crmyau8eq85r.us-east-1.rds.amazonaws.com:3307/finalproject";
-    private static final String USERNAME = "admin";
-    private static final String PASSWORD = "abcd12345";
+	private static final String URL = "jdbc:mysql://localhost:3307/finalproject";
+    private static final String USERNAME = "root";
+    private static final String PASSWORD = "Redroses@005";
 
     public static Connection getConnection() throws SQLException {
         try {
@@ -28,4 +30,12 @@ public class MySQLConnection {
             }
         }
     }
+	/*
+	 * public static void main(String[] args) { try { Connection conn =
+	 * getConnection(); String sql =
+	 * "Select student_name from students where student_id = 1"; PreparedStatement
+	 * ptst = conn.prepareStatement(sql); ResultSet rs = ptst.executeQuery();
+	 * if(rs.next()) { System.out.println(rs.getString("student_name")); } }catch
+	 * (Exception e) { // TODO: handle exception } }
+	 */
 }

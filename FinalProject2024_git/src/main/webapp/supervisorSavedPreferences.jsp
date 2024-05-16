@@ -81,6 +81,8 @@ String username = session.getAttribute("username").toString();
         		studentsMap.put(group, studentsList);
         		System.out.println(studentsMap.toString());
         	}
+        	}
+        }
         
         StringBuilder sql = new StringBuilder("SELECT topic_id, topic_name FROM topics WHERE topic_id IN (");
         for (int i = 0; i < topicsList.size(); i++) {
@@ -101,8 +103,6 @@ String username = session.getAttribute("username").toString();
                 topicNames.put(rs2.getInt("topic_id"), rs2.getString("topic_name"));
             }
         } 
-        	}
-        }
 %>
                         <table class="table">
                 <thead>

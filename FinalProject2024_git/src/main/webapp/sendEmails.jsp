@@ -34,7 +34,7 @@
         <div id="page-content-wrapper">
             <div class="container-fluid">
             <a href="#" class="btn btn-secondary" id="menu-toggle"><i class="fas fa-bars"></i></a>
-                <h1>Send Emails to Students</h1>
+                <h1>Send Emails</h1>
                 <div class="form-section">
                     <form id="departmentForm">
                         <label for="department">Choose Department:</label>
